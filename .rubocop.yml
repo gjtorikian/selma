@@ -1,0 +1,12 @@
+inherit_gem:
+  rubocop-standard:
+    - config/default.yml
+    - config/minitest.yml
+
+AllCops:
+  Exclude:
+    - db/schema.rb
+    - db/migrate/*.rb
+    - node_modules/**/*
+    - tmp/**/*
+    - vendor/**/*
