@@ -22,16 +22,21 @@ Gem::Specification.new do |spec|
   spec.metadata["rubygems_mfa_required"] = "true"
 
   spec.add_dependency "nokogiri", "~> 1.13"
+  spec.add_dependency "sanitize", "~> 6.0"
   spec.add_dependency "zeitwerk", "~> 2.5"
 
   spec.add_development_dependency "amazing_print"
-
-  spec.add_development_dependency "rake"
-
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "minitest-focus", "~> 1.2"
-
+  spec.add_development_dependency "rake"
   spec.add_development_dependency "rubocop-standard"
+  # benchmark stuff
+  spec.add_development_dependency "benchmark-ips"
+  spec.add_development_dependency "commonmarker"
+  spec.add_development_dependency "gemoji"
+  spec.add_development_dependency "html-pipeline"
+  spec.add_development_dependency "rouge"
+  spec.add_development_dependency "sanitize"
 
-  # spec.add_development_dependency "debug", ">= 1.0.0"
+  spec.add_development_dependency "debug", ">= 1.0.0"
 end

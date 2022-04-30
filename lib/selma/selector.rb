@@ -2,11 +2,10 @@
 
 module Selma
   class Selector
-    attr_reader :match, :reject
+    attr_reader :match
 
-    def initialize(match: nil, reject: nil)
+    def initialize(match: nil)
       @match = match
-      @reject = reject
     end
   end
 end

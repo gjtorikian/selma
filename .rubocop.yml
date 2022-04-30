@@ -10,3 +10,4 @@ AllCops:
     - node_modules/**/*
     - tmp/**/*
     - vendor/**/*
+    - test/progit/**/*
