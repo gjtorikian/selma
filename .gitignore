@@ -1,21 +1,41 @@
-*.gem
-*.rbc
-.bundle
-.config
-.yardoc
-Gemfile.lock
-gemfiles/*.lock
-InstalledFiles
-_yardoc
-coverage
-doc/
-lib/bundler/man
-pkg
-rdoc
-spec/reports
-test/tmp
-test/version_tmp
-tmp
-exec/*
-vendor/gems
-test/progit
+# bundler
+/.bundle/
+/Gemfile*lock
+/vendor/
+
+# building and packaging
+/ext/selma/**/selma.dll
+/ext/selma/include
+/gems/
+/lib/selma/**/selma.bundle
+/lib/selma/**/selma.so
+/pkg/
+/ports/
+/tmp/
+
+# code coverage
+/coverage/
+
+# documentation
+/html/
+
+# editors and tags
+.classpath
+.project
+.settings
+build
+TAGS
+tags
+
+# auto-formatting
+/ext/**/*.orig
+
+# mac
+.DS_Store/
+
+# Vagrant
+/.vagrant/
+
+# directories or files named after issues, and debugging
+/[0-9][0-9][0-9]*
+/*.log

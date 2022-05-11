@@ -1,0 +1,6 @@
+[submodule "ext/selma/lol-html"]
+	path = ext/selma/lol-html
+	url = https://github.com/cloudflare/lol-html.git
+[submodule "ext/selma/lol-html-upstream"]
+	path = ext/selma/lol-html-upstream
+	url = https://github.com/cloudflare/lol-html.git
