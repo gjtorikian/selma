@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+if [ -z "$1" ]; then
+  BRANCH="master"
+else
+  BRANCH=$1
+fi
+
+echo "Using $BRANCH..."
+
+echo "Checking out lol-html-upstream"
+echo "---------------------"
+cd ext/selma/lol-html-upstream
+git fetch origin
+git checkout $BRANCH && git pull
+SUBMODULE_SHA=`git rev-parse HEAD`
+cd ../../..
+git add ext/selma/lol-html-upstream
+if [ -n "$(git status --porcelain)" ]; then
+  git commit -m "Update lol-html-upstream to ${sha}"
+fi

@@ -2,6 +2,8 @@
 
 Selma **sel**ects and **ma**tches HTML nodes. (It can also reject/delete them, but then the name isn't as cool.)
 
+![](https://s11.favim.com/orig/7/776/7763/77638/selma-bouvier-patty-bouvier-seymour-skinner-Favim.com-7763869.jpg)
+
 ## Installation
 
 Add this line to your application's Gemfile:
@@ -22,13 +24,20 @@ Or install it yourself as:
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+* scriptupdatesubmodules
+* rake dependencies:fetch
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+## Benchmarks
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/gjtorikian/selma. This project is intended to be a safe, welcoming space for collaboration.
+Bug reports and pull requests are welcome on GitHub at https://github.com/gjtorikian/selma. This project is a safe, welcoming space for collaboration.
+
+## Acknowledgements
+
+Nokogiri xplat
+vmg for goomba
+sanitize for api
 
 ## License
 

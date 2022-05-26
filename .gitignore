@@ -9,6 +9,7 @@
 /gems/
 /lib/selma/**/selma.bundle
 /lib/selma/**/selma.so
+/lib/selma/**/selma.dylib
 /pkg/
 /ports/
 /tmp/

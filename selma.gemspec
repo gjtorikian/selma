@@ -12,31 +12,34 @@ Gem::Specification.new do |spec|
   spec.description   = "Write a longer description or delete this line."
 
   spec.license       = "MIT"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.7.0")
+  spec.required_ruby_version = Gem::Requirement.new("~> 3.0")
 
   spec.metadata["source_code_uri"] = "https://github.com/gjtorikian/selma"
 
-  spec.files         = `git ls-files -z`.split("\x0").grep_v(%r{^(test|gemfiles|script)/})
+  spec.files         = ["Gemfile", "LICENSE.txt", "README.md", "Rakefile", "selma.gemspec"]
+  spec.files        += Dir.glob("lib/**/*.rb")
+  spec.files        += Dir["ext/selma/*{.rb,.c,.h}"]
+  spec.files        += Dir["ext/selma/liblolhtml/**/*"]
+  spec.files        += Dir["ext/selma/nokogiri-gumbo-parser/**/*"]
+  spec.files        += Dir["ext/selma/uthash/**/*"]
+  spec.files        += Dir["ext/selma/entities/**/*"]
+  spec.files        += Dir["bin/**/*"]
+
+  spec.bindir = "bin"
+  spec.executables = spec.files.grep(/^bin/) { |f| File.basename(f) }
+
   spec.require_paths = ["lib"]
 
-  spec.metadata["rubygems_mfa_required"] = "true"
+  spec.homepage = "https://github.com/gjtorikian/selma"
+  spec.metadata = {
+    "funding_uri" => "https://github.com/sponsors/gjtorikian/",
+    "homepage_uri" => "https://github.com/gjtorikian/selma",
+    "bug_tracker_uri" => "https://github.com/gjtorikian/selma/issues",
+    "source_code_uri" => "https://github.com/gjtorikian/selma",
+    "rubygems_mfa_required" => "true",
+  }
 
-  spec.add_dependency "nokogiri", "~> 1.13"
-  spec.add_dependency "sanitize", "~> 6.0"
-  spec.add_dependency "zeitwerk", "~> 2.5"
-
-  spec.add_development_dependency "amazing_print"
-  spec.add_development_dependency "minitest", "~> 5.0"
-  spec.add_development_dependency "minitest-focus", "~> 1.2"
-  spec.add_development_dependency "rake"
-  spec.add_development_dependency "rubocop-standard"
-  # benchmark stuff
-  spec.add_development_dependency "benchmark-ips"
-  spec.add_development_dependency "commonmarker"
-  spec.add_development_dependency "gemoji"
-  spec.add_development_dependency "html-pipeline"
-  spec.add_development_dependency "rouge"
-  spec.add_development_dependency "sanitize"
-
-  spec.add_development_dependency "debug", ">= 1.0.0"
+  spec.add_development_dependency("rake", "~> 13.0")
+  spec.add_development_dependency("rake-compiler", "~> 1.1")
+  spec.add_development_dependency("rake-compiler-dock", "~> 1.2")
 end

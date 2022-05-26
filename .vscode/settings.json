@@ -1,0 +1,5 @@
+{
+  "search.exclude": {
+    "ext/selma/lol-html-upstream": true
+  }
+}

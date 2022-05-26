@@ -8,7 +8,13 @@ require_relative "benchmark/selma_config"
 
 benchinput = File.read("test/benchinput.md").freeze
 
-printf("input size = %<bytes>d bytes\n\n", { bytes: benchinput.bytesize })
+def bytes_to_megabytes(bytes)
+  (bytes.to_f / 1_000_000).round(2)
+end
+
+bytes = benchinput.bytesize
+mbes = bytes_to_megabytes(bytes)
+puts("input size = #{bytes} bytes, #{mbes} MB\n\n")
 
 Benchmark.ips do |x|
   x.report("html-pipeline") do
@@ -16,9 +22,9 @@ Benchmark.ips do |x|
       asset_root: "http://your-domain.com/where/your/images/live/icons",
       base_url: "http://your-domain.com",
       asset_proxy: "https//assets.example.org",
-      asset_proxy_secret_key: "ssssh-secret"
+      asset_proxy_secret_key: "ssssh-secret",
     }
-    pipeline = HTML::Pipeline.new [
+    pipeline = HTML::Pipeline.new([
       HTML::Pipeline::MarkdownFilter,
       HTML::Pipeline::SanitizationFilter,
       HTML::Pipeline::CamoFilter,
@@ -26,22 +32,22 @@ Benchmark.ips do |x|
       HTML::Pipeline::HttpsFilter,
       HTML::Pipeline::MentionFilter,
       HTML::Pipeline::EmojiFilter,
-      HTML::Pipeline::SyntaxHighlightFilter
-    ], context.merge(gfm: true)
+      HTML::Pipeline::SyntaxHighlightFilter,
+    ], context.merge(gfm: true))
     result = pipeline.call(benchinput)
     result[:output].to_s
   end
 
   x.report("selma") do
     html = CommonMarker.render_html(benchinput)
-    Selma::DocumentFragment.to_html(html, sanitize: SelmaConfig::ALLOWLIST, manipulators: [
-                                      SelmaConfig::CamoManipulator.new,
-                                      SelmaConfig::ImageMaxWidthManipulator.new,
-                                      SelmaConfig::HttpsManipulator.new,
-                                      SelmaConfig::MentionManipulator.new,
-                                      SelmaConfig::EmojiManipulator.new,
-                                      SelmaConfig::SyntaxHighlightManipulator.new
-                                    ])
+    Selma::HTML.new(html, sanitize: SelmaConfig::ALLOWLIST, handlers: [
+      SelmaConfig::CamoHandler.new,
+      SelmaConfig::ImageMaxWidthHandler.new,
+      SelmaConfig::HttpsHandler.new,
+      SelmaConfig::MentionHandler.new,
+      SelmaConfig::EmojiHandler.new,
+      SelmaConfig::SyntaxHighlightHandler.new,
+    ]).rewrite
   end
 
   x.compare!
