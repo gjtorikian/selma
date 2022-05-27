@@ -54,26 +54,6 @@ selma_sanitizer_free(void *_sanitizer)
   xfree(sanitizer);
 }
 
-static void
-lol_html_str_copy(void *_dst, const void *_src)
-{
-  lol_html_str_t *dst = (lol_html_str_t *)_dst, *src = (lol_html_str_t *)_src;
-  if (src->data) {
-    dst->data = strndup(src->data, src->len);
-    dst->len = src->len;
-  } else {
-    dst->data = NULL;
-    dst->len = 0;
-  }
-}
-
-static void
-lol_html_str_dtor(void *_elt)
-{
-  lol_html_str_t *elt = (lol_html_str_t *)_elt;
-  if (elt->data) { lol_html_str_free(*elt); }
-}
-
 SelmaSanitizer *
 selma_sanitizer_new(void)
 {
@@ -218,17 +198,9 @@ has_allowed_protocol(StringArray *protocols_allowed,
   char *protocol;
   size_t len = 0;
 
-  // Trim leading space
-  while (isspace(*value)) {
-    value++;
-  }
-
   while (value[len] && value[len] != ':' && value[len] != '/' && value[len] != '#') {
     len++;
   }
-
-  // sets stripped whitespace from the front of links
-  lol_html_element_set_attribute(element, attr_name.data, attr_name.len, value, strlen(value));
 
   if (value[len] == '/') {
     lol_html_str_free(attr_name);
@@ -266,17 +238,18 @@ should_keep_attribute(SelmaSanitizer *sanitizer,
   bool allowed = false;
 
   lol_html_str_t attr_name = lol_html_attribute_name_get(attr);
+  char *attr_name_val = strndup(attr_name.data, attr_name.len);
 
-  if (element_sanitizer && string_list_contains(element_sanitizer->allowed_attrs, attr_name.data)) {
+  if (element_sanitizer && string_list_contains(element_sanitizer->allowed_attrs, attr_name_val)) {
     allowed = true;
   }
 
-  if (!allowed && string_list_contains(sanitizer->allowed_attrs, attr_name.data)) {
+  if (!allowed && string_list_contains(sanitizer->allowed_attrs, attr_name_val)) {
     allowed = true;
   }
 
   if (!allowed) {
-    lol_html_str_free(attr_name);
+    free(attr_name_val);
     return false;
   }
 
@@ -284,24 +257,24 @@ should_keep_attribute(SelmaSanitizer *sanitizer,
     StringHash *protocol_sanitizers = element_sanitizer->protocol_sanitizers;
     StringHash *protocol_sanitizer;
 
-    HASH_FIND_STR(protocol_sanitizers, attr_name.data, protocol_sanitizer);
+
+    HASH_FIND_STR(protocol_sanitizers, attr_name_val, protocol_sanitizer);
     if (protocol_sanitizer) {
       if (!has_allowed_protocol(protocol_sanitizers->values, element, attr)) {
-        lol_html_str_free(attr_name);
-        return false;
-      }
-    }
-
-    if (!strcmp(attr_name.data, "class")) {
-      if (!sanitize_class_attribute(sanitizer, element, element_sanitizer, attr)) {
-        lol_html_str_free(attr_name);
+        free(attr_name_val);
         return false;
       }
     }
   }
 
-  lol_html_str_free(attr_name);
+  if (!strcmp(attr_name.data, "class")) {
+    if (!sanitize_class_attribute(sanitizer, element, element_sanitizer, attr)) {
+      free(attr_name_val);
+      return false;
+    }
+  }
 
+  free(attr_name_val);
   return true;
 }
 
@@ -408,38 +381,6 @@ try_remove_element(SelmaSanitizer *sanitizer,
   return should_remove;
 }
 
-// static void rewrite_attribute_prefix(lol_html_element_t *element,
-//                                      lol_html_attribute_t *attr,
-//                                      const char *name_prefix) {
-//   lol_html_str_t attr_value = lol_html_attribute_value_get(attr);
-//   char *new_value;
-//   int prefix_len = strlen(name_prefix);
-//   int value_len = attr_value.len;
-
-//   if (!value_len) {
-
-//     lol_html_str_free(attr_value);
-//     return;
-//   }
-
-//   if (value_len >= prefix_len &&
-//       !memcmp(attr_value.data, name_prefix, prefix_len)) {
-
-//     lol_html_str_free(attr_value);
-//     return;
-//   }
-//   new_value = alloca(prefix_len + value_len + 1);
-//   memcpy(new_value, name_prefix, prefix_len);
-//   memcpy(new_value + prefix_len, attr_value.data, value_len + 1);
-
-//   lol_html_str_t attr_name = lol_html_attribute_name_get(attr);
-//   lol_html_element_set_attribute(element, attr_name.data, attr_name.len,
-//                                  new_value, strlen(new_value));
-
-//   lol_html_str_free(attr_name);
-//   lol_html_str_free(attr_value);
-// }
-
 lol_html_rewriter_directive_t
 selma_sanitize_doctype(lol_html_doctype_t *doctype, void *user_data)
 {
@@ -479,107 +420,107 @@ selma_sanitize_attributes(lol_html_element_t *element, void *user_data)
 {
   SelmaSanitizer *sanitizer = (SelmaSanitizer *)user_data;
 
-  if (!try_remove_element(sanitizer, element)) {
-    lol_html_str_t str = lol_html_element_tag_name_get(element);
-    GumboTag tag = gumbo_tagn_enum(str.data, str.len);
+  bool keep_element = try_remove_element(sanitizer, element);
 
-    SelmaElementSanitizer *element_sanitizer =
-      try_find_element_sanitizer(sanitizer, tag);
+  if (keep_element) {
+    return LOL_HTML_CONTINUE;
+  }
 
-    lol_html_str_free(str);
+  lol_html_str_t str = lol_html_element_tag_name_get(element);
+  GumboTag tag = gumbo_tagn_enum(str.data, str.len);
+
+  SelmaElementSanitizer *element_sanitizer =
+    try_find_element_sanitizer(sanitizer, tag);
+
+  lol_html_str_free(str);
+
+  lol_html_attributes_iterator_t *iter =
+    lol_html_attributes_iterator_get(element);
+  const lol_html_attribute_t *attr;
+
+  UT_string *unescaped_attr_value;
+  utstring_new(unescaped_attr_value);
+  UT_string *escaped_attr_value;
+  utstring_new(escaped_attr_value);
+
+  const char *href_name = "href";
+  const char *charset_name = "charset";
+  const char *utf8_name = "utf-8";
+  size_t utf8_name_len = strlen(utf8_name);
+
+  while ((attr = lol_html_attributes_iterator_next(iter)) && attr != NULL) {
+    lol_html_str_t attr_name_str = lol_html_attribute_name_get(attr);
+    const char *attr_name = attr_name_str.data;
+    size_t attr_name_len = attr_name_str.len;
+    lol_html_str_t attr_val = lol_html_attribute_value_get(attr);
+    utstring_clear(unescaped_attr_value);
+    utstring_clear(escaped_attr_value);
+    char *unescaped = NULL, *escaped = NULL;
+
+    if (attr_val.len > 0) {
+      // first, unescape any encodings...
+      houdini_unescape_html(unescaped_attr_value, attr_val.data, attr_val.len);
+      unescaped = strndup(utstring_body(unescaped_attr_value), utstring_len(unescaped_attr_value));
+
+      // ...trim leading spaces...
+      while (isspace(*unescaped)) {
+        unescaped++;
+      }
+
+      lol_html_element_set_attribute(element, attr_name, attr_name_len, unescaped, strlen(unescaped));
+
+      if (!should_keep_attribute(sanitizer, element, element_sanitizer, attr)) {
+        lol_html_element_remove_attribute(element, attr_name, attr_name_len);
+      } else {
+        // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
+        // since output is always UTF-8.
+        if (tag == GUMBO_TAG_META) {
+          if (!strcmp(attr_name, charset_name) && strcmp(unescaped, utf8_name)) {
+            lol_html_element_set_attribute(element, attr_name, attr_name_len,
+                                           utf8_name, utf8_name_len);
+          }
+        } else {
+          // ...then, encode any special characters, for security
+          if (!strcmp(attr_name, href_name)) {
+            houdini_escape_href(escaped_attr_value, unescaped, strlen(unescaped));
+          } else {
+            houdini_escape_html(escaped_attr_value, unescaped, strlen(unescaped));
+          }
+          escaped = strndup(utstring_body(escaped_attr_value), utstring_len(escaped_attr_value));
+
+          lol_html_element_set_attribute(element, attr_name, attr_name_len, escaped, strlen(escaped));
+        }
+      }
+    } else { // no value? remove the attribute
+      lol_html_element_remove_attribute(element, attr_name, attr_name_len);
+    }
+
+    lol_html_str_free(attr_name_str);
+    lol_html_str_free(attr_val);
+  }
+
+  lol_html_attributes_iterator_free(iter);
+  utstring_free(unescaped_attr_value);
+  utstring_free(escaped_attr_value);
+
+  if (element_sanitizer && string_list_present(element_sanitizer->required_attrs)) {
+    StringArray *required = element_sanitizer->required_attrs;
+
+    if (string_list_contains(required, "*")) {
+      return LOL_HTML_CONTINUE;
+    }
 
     lol_html_attributes_iterator_t *iter =
       lol_html_attributes_iterator_get(element);
-    const lol_html_attribute_t *attr;
-
-    UT_string *unescaped_attr_value;
-    utstring_new(unescaped_attr_value);
-    UT_string *escaped_attr_value;
-    utstring_new(escaped_attr_value);
-
-    UT_array *removed_attrs;
-    UT_icd lol_html_str_icd = {sizeof(lol_html_str_t), NULL, lol_html_str_copy, lol_html_str_dtor};
-    utarray_new(removed_attrs, &lol_html_str_icd);
-    const char *href_name = "href";
 
     while ((attr = lol_html_attributes_iterator_next(iter)) != NULL) {
-      lol_html_str_t attr_name = lol_html_attribute_name_get(attr);
-      lol_html_str_t attr_val = lol_html_attribute_value_get(attr);
-      utstring_clear(unescaped_attr_value);
-      utstring_clear(escaped_attr_value);
-      char *unescaped = NULL, *escaped = NULL;
-
-      if (attr_val.len > 0) {
-        // first, unescape any encodings...
-        houdini_unescape_html(unescaped_attr_value, attr_val.data, attr_val.len);
-        unescaped = strndup(utstring_body(unescaped_attr_value), utstring_len(unescaped_attr_value));
-
-        // ...then, encode any special characters, for security
-        if (!strcmp(attr_name.data, href_name)) {
-          houdini_escape_href(escaped_attr_value, unescaped, strlen(unescaped));
-        } else {
-          houdini_escape_html(escaped_attr_value, unescaped, strlen(unescaped));
-        }
-        escaped = strndup(utstring_body(escaped_attr_value), utstring_len(escaped_attr_value));
-
-        lol_html_element_set_attribute(element, attr_name.data, attr_name.len, escaped, strlen(escaped));
-
-        if (!should_keep_attribute(sanitizer, element, element_sanitizer, attr)) {
-          utarray_push_back(removed_attrs, &attr_name);
-        } else {
-          // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
-          // since output is always UTF-8.
-          if (tag == GUMBO_TAG_META) {
-            if (!strcmp(attr_name.data, "charset") && strcmp(attr_val.data, "utf-8")) {
-              lol_html_element_set_attribute(element, attr_name.data, attr_name.len,
-                                             "utf-8", 6);
-            }
-          }
-        }
-      } else { // no value? remove the attribute
-        utarray_push_back(removed_attrs, &attr_name);
-      }
-
-      lol_html_str_free(attr_name);
-      lol_html_str_free(attr_val);
-      free(unescaped);
-      free(escaped);
-    }
-
-    lol_html_attributes_iterator_free(iter);
-    utstring_free(unescaped_attr_value);
-    utstring_free(escaped_attr_value);
-
-    // seems to be some issue where removing an attr while
-    // iterating messes up the iteration. so, keep track of
-    // attrs that need to be removed and remove at the end
-    lol_html_str_t *a = NULL;
-    while ((a = (lol_html_str_t *)utarray_next(removed_attrs, a))) {
-      lol_html_element_remove_attribute(element, a->data, a->len);
-    }
-    utarray_free(removed_attrs);
-
-    if (element_sanitizer && string_list_present(element_sanitizer->required_attrs)) {
-      StringArray *required = element_sanitizer->required_attrs;
-
-      if (string_list_contains(required, "*")) {
-        return LOL_HTML_CONTINUE;
-      }
-
-      lol_html_attributes_iterator_t *iter =
-        lol_html_attributes_iterator_get(element);
-
-      while ((attr = lol_html_attributes_iterator_next(iter)) != NULL) {
-        lol_html_str_t name = lol_html_attribute_name_get(attr);
-        if (string_list_contains(required, name.data)) {
-          lol_html_str_free(name);
-          break;
-        }
+      lol_html_str_t name = lol_html_attribute_name_get(attr);
+      if (string_list_contains(required, name.data)) {
+        lol_html_str_free(name);
+        break;
       }
     }
   }
-
-  return LOL_HTML_CONTINUE;
 }
 
 lol_html_rewriter_directive_t
@@ -593,7 +534,7 @@ selma_sanitize_text(lol_html_text_chunk_t *chunk, void *user_data)
   lol_html_text_chunk_content_t content = lol_html_text_chunk_content_get(chunk);
 
   houdini_escape_html(text, content.data, content.len);
-  lol_html_text_chunk_replace(chunk, utstring_body(text), utstring_len(text), false);
+  lol_html_text_chunk_replace(chunk, utstring_body(text), utstring_len(text), true);
 
   utstring_free(text);
 

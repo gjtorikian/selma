@@ -284,9 +284,8 @@ module Selma
             elements: ["b"]
           )
 
-          assert_equal('<b data-foo="valid" data-bar="valid"></b>',
-            Selma::HTML.new('<b data-foo="valid" data-bar="valid"></b>',
-              sanitizer: sanitizer).rewrite)
+          str = '<b data-foo="valid" data-bar="valid"></b>'
+          assert_equal(str, Selma::HTML.new(str, sanitizer: sanitizer).rewrite)
 
           assert_equal("<b></b>",
             Selma::HTML.new('<b data-="invalid"></b>', sanitizer: sanitizer).rewrite)

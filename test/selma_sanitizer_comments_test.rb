@@ -53,7 +53,7 @@ module Selma
             Selma::HTML.new("foo <!-- <!-- <!-- --> --> -->bar",
               sanitizer: @sanitizer).rewrite)
 
-          assert_equal("foo <div>bar</div>",
+          assert_equal("foo <div>&gt;bar</div>",
             Selma::HTML.new("foo <div <!-- comment -->>bar</div>",
                                           sanitizer: @sanitizer).rewrite)
 

@@ -85,7 +85,6 @@ perform_lol_html_rewrite(lol_html_rewriter_t *rewriter, char *src, UT_string *ou
   }
 
   html = strndup(utstring_body(output), utstring_len(output));
-  utstring_clear(output);
 
   return html;
 }
@@ -126,7 +125,7 @@ perform_final_sanitization(SelmaSanitizer *sanitizer, lol_html_selector_t *selec
   lol_html_rewriter_builder_t *builder = lol_html_rewriter_builder_new();
 
   int status = lol_html_rewriter_builder_add_element_content_handlers(
-                 builder, selector, selma_sanitize_attributes, sanitizer, NULL, NULL, NULL, NULL);
+                 builder, selector, selma_sanitize_attributes, sanitizer, NULL, NULL, selma_sanitize_text, NULL);
   if (status) {
     raise_lol_html_error();
   }
@@ -146,7 +145,7 @@ perform_final_sanitization(SelmaSanitizer *sanitizer, lol_html_selector_t *selec
 }
 
 static char *
-perform_rewrite(SelmaRewriter *selma_rewriter, char *html, UT_string *output)
+perform_handler_rewrite(SelmaRewriter *selma_rewriter, char *html, UT_string *output)
 {
   lol_html_rewriter_builder_t *builder = lol_html_rewriter_builder_new();
 
@@ -174,6 +173,7 @@ rb_selma_html_rewrite(VALUE self)
   rb_sanitizer = rb_iv_get(self, "@sanitizer");
   rb_rewriter = rb_iv_get(self, "@rewriter");
   rb_html = rb_iv_get(self, "@html");
+  int has_sanitizer = rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer);
   int has_rewriter = rb_obj_is_kind_of(rb_rewriter, rb_cRewriter);
 
   double do_measure_stats = rb_iv_get(self, "@measuring");
@@ -186,7 +186,9 @@ rb_selma_html_rewrite(VALUE self)
   }
 
   SelmaSanitizer *sanitizer = NULL;
-  Data_Get_Struct(rb_sanitizer, SelmaSanitizer, sanitizer);
+  if (has_sanitizer) {
+    Data_Get_Struct(rb_sanitizer, SelmaSanitizer, sanitizer);
+  }
 
   SelmaRewriter *selma_rewriter = NULL;
   if (has_rewriter) {
@@ -195,42 +197,51 @@ rb_selma_html_rewrite(VALUE self)
 
   char *html = strndup(
                  RSTRING_PTR(rb_html),
-                 RSTRING_LEN(rb_html) + 1
+                 RSTRING_LEN(rb_html)
                );
 
   UT_string *output;
   utstring_new(output);
 
-  const char *selector_str = "*";
-  lol_html_selector_t *selector =
-    lol_html_selector_parse(selector_str, strlen(selector_str));
+  if (has_sanitizer) {
+    const char *selector_str = "*";
+    lol_html_selector_t *selector =
+      lol_html_selector_parse(selector_str, strlen(selector_str));
 
-  char *first_pass_html = perform_initial_sanitization(sanitizer, selector, html, output);
+    char *first_pass_html = perform_initial_sanitization(sanitizer, selector, html, output);
+    // due to malicious html crafting
+    // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
+    // we need to run sanitization several times to truly remove unwanted tags,
+    // because lol-html happily accepts this garbage (by design?)
+    utstring_clear(output);
+    char *sanitized_html = perform_final_sanitization(sanitizer, selector, first_pass_html, output);
 
-  // due to malicious html crafting
-  // (e.g. <<foo>script>...</script>, as in tests),
-  // we need to run sanitization twice to truly remove unwanted tags
-  char *sanitized_html = perform_final_sanitization(sanitizer, selector, first_pass_html, output);
+    if (do_measure_stats) {
+      selma_stats(rb_stats, "HTML#sanitize", 1, selma_get_ms() - begin);
+    }
+    if (!has_rewriter) {
+      rb_html = encode_utf8_string(sanitized_html);
+      rb_iv_set(self, "@html", rb_html);
+    } else {
+      utstring_clear(output);
+      char *processed_html = perform_handler_rewrite(selma_rewriter, first_pass_html, output);
+      rb_html = encode_utf8_string(processed_html);
+      rb_iv_set(self, "@html", rb_html);
+      free(processed_html);
+    }
 
-  if (!has_rewriter) {
-    rb_html = encode_utf8_string(sanitized_html);
-    rb_iv_set(self, "@html", rb_html);
-  } else {
-    char *processed_html = perform_rewrite(selma_rewriter, first_pass_html, output);
+    lol_html_selector_free(selector);
+    free(first_pass_html);
+    free(sanitized_html);
+  } else if (has_rewriter) {
+    char *processed_html = perform_handler_rewrite(selma_rewriter, html, output);
     rb_html = encode_utf8_string(processed_html);
     rb_iv_set(self, "@html", rb_html);
     free(processed_html);
   }
 
-  lol_html_selector_free(selector);
-  utstring_free(output);
-  free(first_pass_html);
-  free(sanitized_html);
   free(html);
-
-  if (do_measure_stats) {
-    selma_stats(rb_stats, "HTML#sanitize", 1, selma_get_ms() - begin);
-  }
+  utstring_free(output);
 
   return rb_html;
 }
@@ -276,11 +287,12 @@ rb_selma_html_new(int argc, VALUE *argv, VALUE klass)
   selma_utf8_strcheck(rb_string);
   rb_iv_set(rb_html, "@html", rb_string);
 
-  if (!rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer)) {
-    rb_raise(rb_eTypeError, "expected a Selma::Sanitizer instance");
+  if (!NIL_P(rb_sanitizer)) {
+    if (!rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer)) {
+      rb_raise(rb_eTypeError, "expected a Selma::Sanitizer instance");
+    }
+    Data_Get_Struct(rb_sanitizer, SelmaSanitizer, sanitizer);
   }
-
-  Data_Get_Struct(rb_sanitizer, SelmaSanitizer, sanitizer);
 
   rb_ivar_set(rb_html, g_id_sanitizer, rb_sanitizer);
   rb_ivar_set(rb_html, g_id_rewriter, rb_rewriter);
