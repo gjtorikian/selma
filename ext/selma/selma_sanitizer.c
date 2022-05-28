@@ -8,10 +8,15 @@
 
 #include "houdini/houdini.h"
 #include "liblolhtml/lol_html.h"
-#include "nokogiri-gumbo-parser/ascii.h"
 #include "nokogiri-gumbo-parser/nokogiri_gumbo.h"
-#include "nokogiri-gumbo-parser/util.h"
 #include "uthash/utarray.h"
+
+
+static const char *href_name = "href";
+static const char *charset_name = "charset";
+static const char *utf8_name = "utf-8";
+static const size_t utf8_name_len = 5; // strlen
+static const char *comment_open = "<!--";
 
 static int
 free_each_element_sanitizer(st_data_t _unused1, st_data_t _element_sanitizer,
@@ -65,6 +70,26 @@ selma_sanitizer_new(void)
   sanitizer->element_sanitizers = st_init_numtable();
 
   return sanitizer;
+}
+
+static void
+lol_html_str_copy(void *_dst, const void *_src)
+{
+  lol_html_str_t *dst = (lol_html_str_t *)_dst, *src = (lol_html_str_t *)_src;
+  if (src->len > 0) {
+    dst->data = strndup(src->data, src->len);
+    dst->len = src->len;
+  } else {
+    dst->data = NULL;
+    dst->len = 0;
+  }
+}
+
+static void
+lol_html_str_dtor(void *_elt)
+{
+  lol_html_str_t *elt = (lol_html_str_t *)_elt;
+  if (elt->data) { lol_html_str_free(*elt); }
 }
 
 static SelmaElementSanitizer *
@@ -339,6 +364,28 @@ remove_element(lol_html_element_t *element, uint8_t flags)
 }
 
 static bool
+force_remove_element(SelmaSanitizer *sanitizer, lol_html_element_t *element)
+{
+  lol_html_str_t tag_name = lol_html_element_tag_name_get(element);
+  GumboTag tag = gumbo_tagn_enum(tag_name.data, tag_name.len);
+
+  bool should_remove = false;
+
+  uint8_t flags = (tag == GUMBO_TAG_UNKNOWN) ? 0 : sanitizer->flags[tag];
+
+  remove_element(element, flags);
+
+  lol_html_str_free(tag_name);
+
+  if (lol_html_element_is_removed(element)) {
+    lol_html_element_on_end_tag(element, remove_end_tag, NULL);
+  } else {
+    return false;
+  }
+  return true;
+}
+
+static bool
 try_remove_element(SelmaSanitizer *sanitizer,
                    lol_html_element_t *element)
 {
@@ -443,14 +490,23 @@ selma_sanitize_attributes(lol_html_element_t *element, void *user_data)
   UT_string *escaped_attr_value;
   utstring_new(escaped_attr_value);
 
-  const char *href_name = "href";
-  const char *charset_name = "charset";
-  const char *utf8_name = "utf-8";
-  size_t utf8_name_len = strlen(utf8_name);
+  UT_array *removed_attrs;
+  UT_icd lol_html_str_icd = {sizeof(lol_html_str_t), NULL, lol_html_str_copy, lol_html_str_dtor};
+  utarray_new(removed_attrs, &lol_html_str_icd);
 
-  while ((attr = lol_html_attributes_iterator_next(iter)) && attr != NULL) {
+  while ((attr = lol_html_attributes_iterator_next(iter))) {
     lol_html_str_t attr_name_str = lol_html_attribute_name_get(attr);
     const char *attr_name = attr_name_str.data;
+
+    // you can actually embed <!-- ... --> inside
+    // an HTML tag to pass malicious data. If this is
+    // encountered, remove the entire element to be safe.
+    if (!strcmp(attr_name, comment_open)) {
+      lol_html_str_free(attr_name_str);
+      force_remove_element(sanitizer, element);
+      continue;
+    }
+
     size_t attr_name_len = attr_name_str.len;
     lol_html_str_t attr_val = lol_html_attribute_value_get(attr);
     utstring_clear(unescaped_attr_value);
@@ -470,7 +526,7 @@ selma_sanitize_attributes(lol_html_element_t *element, void *user_data)
       lol_html_element_set_attribute(element, attr_name, attr_name_len, unescaped, strlen(unescaped));
 
       if (!should_keep_attribute(sanitizer, element, element_sanitizer, attr)) {
-        lol_html_element_remove_attribute(element, attr_name, attr_name_len);
+        utarray_push_back(removed_attrs, &attr_name_str);
       } else {
         // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
         // since output is always UTF-8.
@@ -492,7 +548,7 @@ selma_sanitize_attributes(lol_html_element_t *element, void *user_data)
         }
       }
     } else { // no value? remove the attribute
-      lol_html_element_remove_attribute(element, attr_name, attr_name_len);
+      utarray_push_back(removed_attrs, &attr_name_str);
     }
 
     lol_html_str_free(attr_name_str);
@@ -502,6 +558,15 @@ selma_sanitize_attributes(lol_html_element_t *element, void *user_data)
   lol_html_attributes_iterator_free(iter);
   utstring_free(unescaped_attr_value);
   utstring_free(escaped_attr_value);
+
+  // seems to be some issue where removing an attr while
+  // iterating messes up the iteration. so, keep track of
+  // attrs that need to be removed and remove at the end
+  lol_html_str_t *a = NULL;
+  while ((a = (lol_html_str_t *)utarray_next(removed_attrs, a))) {
+    lol_html_element_remove_attribute(element, a->data, a->len);
+  }
+  utarray_free(removed_attrs);
 
   if (element_sanitizer && string_list_present(element_sanitizer->required_attrs)) {
     StringArray *required = element_sanitizer->required_attrs;

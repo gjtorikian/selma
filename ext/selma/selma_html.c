@@ -36,23 +36,6 @@ encode_utf8_string(const char *c_string)
   return string;
 }
 
-static void
-initialize_sanitation(SelmaSanitizer *sanitizer,
-                      lol_html_rewriter_builder_t *builder, lol_html_selector_t *selector)
-{
-  int status = 0;
-
-  lol_html_rewriter_builder_add_document_content_handlers(
-    builder, selma_sanitize_doctype, sanitizer, selma_sanitize_comment, sanitizer, NULL, NULL, NULL, NULL);
-
-  status = lol_html_rewriter_builder_add_element_content_handlers(
-             builder, selector, selma_sanitize_element, sanitizer, NULL, NULL, NULL, NULL);
-
-  if (status) {
-    raise_lol_html_error();
-  }
-}
-
 static lol_html_rewriter_t *
 initialize_rewriter(lol_html_rewriter_builder_t *builder, UT_string *output)
 {
@@ -125,7 +108,7 @@ perform_final_sanitization(SelmaSanitizer *sanitizer, lol_html_selector_t *selec
   lol_html_rewriter_builder_t *builder = lol_html_rewriter_builder_new();
 
   int status = lol_html_rewriter_builder_add_element_content_handlers(
-                 builder, selector, selma_sanitize_attributes, sanitizer, NULL, NULL, selma_sanitize_text, NULL);
+                 builder, selector, selma_sanitize_attributes, sanitizer, NULL, NULL, NULL, NULL);
   if (status) {
     raise_lol_html_error();
   }

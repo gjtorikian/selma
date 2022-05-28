@@ -22,3 +22,56 @@ rb_selma_element_to_s(VALUE self)
 
   return utstring_to_rb(out, true);
 }
+
+VALUE
+rb_selma_element_attr_get(VALUE rb_self, VALUE rb_key)
+{
+  lol_html_element_t *element;
+
+  Data_Get_Struct(rb_self, lol_html_element_t, element);
+
+  char *key = StringValueCStr(rb_key);
+  size_t key_len = strlen(key);
+  int fetch_status = lol_html_element_has_attribute(element, key, key_len);
+
+  if (fetch_status == 0) {
+    return Qnil;
+  } else if (fetch_status < 0) {
+    raise_lol_html_error();
+  } else {
+    lol_html_str_t attr = lol_html_element_get_attribute(element, key, key_len);
+    return rb_enc_str_new_cstr(attr.data, rb_utf8_encoding());
+  }
+}
+
+VALUE
+rb_selma_element_attr_set(VALUE rb_self, VALUE rb_key, VALUE rb_value)
+{
+  lol_html_element_t *element;
+  Data_Get_Struct(rb_self, lol_html_element_t, element);
+
+  int status = lol_html_element_set_attribute(element, RSTRING_PTR(rb_key), RSTRING_LEN(rb_key), RSTRING_PTR(rb_value),
+               RSTRING_LEN(rb_value));
+  if (status) {
+    raise_lol_html_error();
+  }
+
+  return rb_value;
+}
+
+void
+Init_selma_element_rb(void)
+{
+  rb_cElement = rb_define_class_under(rb_mSelma, "Element", rb_cHTML);
+
+  rb_define_method(rb_cElement, "[]", rb_selma_element_attr_get, 1);
+  rb_define_method(rb_cElement, "[]=", rb_selma_element_attr_set, 2);
+  // rb_define_method(rb_cElement, "remove_attribute", rb_selma_element_attr_remove, 1);
+  // rb_define_method(rb_cElement, "attributes", rb_selma_element_attributes, 0);
+  // rb_define_method(rb_cElement, "children!", rb_selma_element_children_load, 0);
+  // rb_define_method(rb_cElement, "text_content", rb_selma_element_text_content, 0);
+  // rb_define_method(rb_cElement, "to_html", rb_selma_element_to_html, 0);
+  rb_define_method(rb_cElement, "to_s", rb_selma_element_to_s, 0);
+  // rb_define_method(rb_cElement, "inner_html", rb_selma_element_inner_html, 0);
+  // rb_define_method(rb_cElement, "select", rb_selma_select, 1);
+}

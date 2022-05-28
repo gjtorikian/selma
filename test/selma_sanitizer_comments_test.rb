@@ -20,7 +20,7 @@ module Selma
           assert_equal("foo  --> -->bar",
             Selma::HTML.new("foo <!-- <!-- <!-- --> --> -->bar",
               sanitizer: @sanitizer).rewrite)
-          assert_equal("foo <div comment>>bar</div>",
+          assert_equal("foo >bar",
             Selma::HTML.new("foo <div <!-- comment -->>bar</div>",
               sanitizer: @sanitizer).rewrite)
 
@@ -53,7 +53,7 @@ module Selma
             Selma::HTML.new("foo <!-- <!-- <!-- --> --> -->bar",
               sanitizer: @sanitizer).rewrite)
 
-          assert_equal("foo <div>&gt;bar</div>",
+          assert_equal("foo >bar",
             Selma::HTML.new("foo <div <!-- comment -->>bar</div>",
                                           sanitizer: @sanitizer).rewrite)
 

@@ -4,10 +4,8 @@
 #include "selma.h"
 
 #include "lol_html.h"
-#include "nokogiri-gumbo-parser/ascii.h"
 #include "nokogiri-gumbo-parser/nokogiri_gumbo.h"
 #include "uthash/utstring.h"
-#include "entities/entities.h"
 
 static ID g_SelmaTagNames[GUMBO_TAG_LAST];
 
@@ -66,7 +64,7 @@ downcase(char *str, unsigned long len)
   char *tmp = malloc(len + 1);
 
   for (unsigned long i = 0; i < len; ++i) {
-    tmp[i] = gumbo_ascii_tolower(str[i]);
+    tmp[i] = tolower(str[i]);
   }
 
   tmp[len] = '\0';

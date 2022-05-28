@@ -15,6 +15,11 @@ typedef struct {
   VALUE rb_adjacent[4];
 } SelmaReplace;
 
+void Init_selma_element_rb(void);
+
 VALUE rb_selma_element_to_s(VALUE self);
+
+VALUE rb_selma_element_attr_get(VALUE rb_self, VALUE rb_key);
+VALUE rb_selma_element_attr_set(VALUE rb_self, VALUE rb_key, VALUE rb_value);
 
 #endif

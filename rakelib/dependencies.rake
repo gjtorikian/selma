@@ -56,13 +56,6 @@ namespace "dependencies" do
     open_url_to_file(nokogiri_url("tag_lookup.c"), nokogiri_path("tag_lookup.c"))
     open_url_to_file(nokogiri_url("tag.c"), nokogiri_path("tag.c"))
 
-    open_url_to_file(nokogiri_url("macros.h"), nokogiri_path("macros.h"))
-    open_url_to_file(nokogiri_url("util.h"), nokogiri_path("util.h"))
-    open_url_to_file(nokogiri_url("util.c"), nokogiri_path("util.c"))
-
-    open_url_to_file(nokogiri_url("ascii.h"), nokogiri_path("ascii.h"))
-    open_url_to_file(nokogiri_url("ascii.c"), nokogiri_path("ascii.c"))
-
     puts " \n* * *\n\n"
     FileUtils.rm_rf("ext/selma/uthash")
     Dir.mkdir("ext/selma/uthash")

@@ -4,8 +4,8 @@
 /* Filtered by: mk/gperf-filter.sed */
 
 #include "tag_lookup.h"
-#include "macros.h"
-#include "ascii.h"
+// #include "macros.h"
+// #include "ascii.h"
 #include <string.h>
 
 #define TOTAL_KEYWORDS 150
@@ -15,7 +15,34 @@
 #define MAX_HASH_VALUE 271
 /* maximum key range = 263, duplicates = 0 */
 
+static inline int gumbo_ascii_isupper(int c) {
+  return ((unsigned)(c) - 'A') < 26;
+}
 
+static inline int gumbo_ascii_tolower(int c) {
+  if (gumbo_ascii_isupper(c)) {
+    return c | 32;
+  }
+  return c;
+}
+
+static int gumbo_ascii_strncasecmp(const char *s1, const char *s2, size_t n) {
+  int c1, c2;
+  while (n && *s1 && *s2) {
+    n -= 1;
+    c1 = (int)(unsigned char) gumbo_ascii_tolower(*s1);
+    c2 = (int)(unsigned char) gumbo_ascii_tolower(*s2);
+    if (c1 != c2) {
+      return (c1 - c2);
+    }
+    s1++;
+    s2++;
+  }
+  if (n) {
+    return (((int)(unsigned char) *s1) - ((int)(unsigned char) *s2));
+  }
+  return 0;
+}
 
 static inline unsigned int
 hash (register const char *str, register size_t len)
