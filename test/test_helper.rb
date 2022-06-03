@@ -34,14 +34,14 @@ STRINGS = {
     default: "Lorem ipsum dolor sit amet  ",
     restricted: "<b>Lorem</b> ipsum <strong>dolor</strong> sit amet  ",
     basic: '<b>Lorem</b> <a>ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet  ',
-    relaxed: '<b>Lorem</b> <a title="foo" style="text-decoration: underline;">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <style>.foo { color: #fff; }</style> '
+    relaxed: '<b>Lorem</b> <a title="foo" style="text-decoration: underline;">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <style>.foo { color: #fff; }</style> ',
   },
 
   malformed: {
     html: 'Lo<!-- comment -->rem</b> <a href=pants title="foo>ipsum <a href="http://foo.com/"><strong>dolor</a></strong> sit<br/>amet <script>alert("hello world");',
     default: "Lorem</b> dolor</strong> sit amet ",
     restricted: "Lorem</b> <strong>dolor</strong> sit amet ",
-    basic: 'Lorem</b> <a><strong>dolor</a></strong> sit<br/>amet ',
+    basic: "Lorem</b> <a><strong>dolor</a></strong> sit<br/>amet ",
     relaxed: 'Lorem</b> <a title="foo&gt;ipsum &lt;a href="><strong>dolor</a></strong> sit<br/>amet ',
   },
 
@@ -55,8 +55,8 @@ STRINGS = {
 
   malicious: {
     html: '<b>Lo<!-- comment -->rem</b> <a href="javascript:pants" title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <<foo>script>alert("hello world");</script>',
-    default: 'Lorem ipsum dolor sit amet ',
-    restricted: '<b>Lorem</b> ipsum <strong>dolor</strong> sit amet ',
+    default: "Lorem ipsum dolor sit amet ",
+    restricted: "<b>Lorem</b> ipsum <strong>dolor</strong> sit amet ",
     basic: '<b>Lorem</b> <a>ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet ',
     relaxed: '<b>Lorem</b> <a title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet ',
   },
@@ -156,7 +156,7 @@ PROTOCOLS = {
     default: "",
     restricted: "",
     basic: "",
-    relaxed: ""
+    relaxed: "",
   },
 
   protocol_based_js_injection_invalid_URL_char: {

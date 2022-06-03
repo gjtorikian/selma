@@ -53,7 +53,7 @@ module Selma
         end
 
         def test_should_not_preserve_the_content_of_removed_script_elements
-          # Note: this gets confused by the embedding
+          # NOTE: this gets confused by the embedding
           assert_equal("</script>", Selma::HTML.new("<script>hello! <script>alert(0)</script></script>").rewrite)
         end
 

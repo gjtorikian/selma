@@ -55,7 +55,7 @@ module Selma
 
           assert_equal("foo >bar",
             Selma::HTML.new("foo <div <!-- comment -->>bar</div>",
-                                          sanitizer: @sanitizer).rewrite)
+              sanitizer: @sanitizer).rewrite)
 
           sanitizer = Selma::Sanitizer.new({ allow_comments: true, elements: ["script"] })
           assert_equal("<script><!-- comment --></script>", Selma::HTML.new("<script><!-- comment --></script>", sanitizer: sanitizer)

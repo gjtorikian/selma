@@ -54,4 +54,43 @@ class SelmaTest < Minitest::Test
     modified_doc = Selma::HTML.new(frag, sanitizer: @sanitizer, handlers: [NoCall.new]).rewrite
     assert_equal(frag, modified_doc)
   end
+
+  class RemoveAttr
+    SELECTOR = Selma::Selector.new(match: "a")
+
+    def selector
+      SELECTOR
+    end
+
+    def process(element)
+      element.remove_attribute("foo")
+    end
+  end
+
+  def test_that_it_removes_attributes
+    frag = "<a foo='bleh'><span foo='keep'>Wow!</span></a>"
+    modified_doc = Selma::HTML.new(frag, sanitizer: nil, handlers: [RemoveAttr.new]).rewrite
+    assert_equal("<a><span foo='keep'>Wow!</span></a>", modified_doc)
+  end
+
+  class GetAttrs < Minitest::Test
+    SELECTOR = Selma::Selector.new(match: "div")
+
+    def selector
+      SELECTOR
+    end
+
+    def process(element)
+      hash = {
+        "class" => "a b c 1 2 3",
+        "data-foo" => "baz",
+      }
+      assert_equal(hash, element.attributes)
+    end
+  end
+
+  def test_that_it_gets_attributes
+    frag = "<article><div class='a b c 1 2 3' data-foo='baz'>Wow!</div></article>"
+    Selma::HTML.new(frag, sanitizer: nil, handlers: [GetAttrs.new("GetAttrs")]).rewrite
+  end
 end

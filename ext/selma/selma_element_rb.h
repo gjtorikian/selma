@@ -21,5 +21,6 @@ VALUE rb_selma_element_to_s(VALUE self);
 
 VALUE rb_selma_element_attr_get(VALUE rb_self, VALUE rb_key);
 VALUE rb_selma_element_attr_set(VALUE rb_self, VALUE rb_key, VALUE rb_value);
+VALUE rb_selma_element_attr_remove(VALUE rb_self, VALUE rb_attr);
 
 #endif

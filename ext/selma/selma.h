@@ -21,7 +21,7 @@ extern VALUE rb_cElement;
 
 // arbitrary safety values
 #define BUFFER_SIZE 0
-#define MAX_MEMORY 2048
+#define MAX_MEMORY 7000000
 
 #define CSTR2SYM(s) (ID2SYM(rb_intern((s))))
 

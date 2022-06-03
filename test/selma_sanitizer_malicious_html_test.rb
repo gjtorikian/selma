@@ -59,33 +59,33 @@ module Selma
     end
 
     def test_should_not_be_possible_to_inject_protocol_based_js
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(
           "<img src=&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;&#97;&#108;&#101;&#114;&#116;&#40;&#39;&#88;&#83;&#83;&#39;&#41;>", sanitizer: @sanitizer
         ).rewrite)
 
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(
           "<img src=&#0000106&#0000097&#0000118&#0000097&#0000115&#0000099&#0000114&#0000105&#0000112&#0000116&#0000058&#0000097&#0000108&#0000101&#0000114&#0000116&#0000040&#0000039&#0000088&#0000083&#0000083&#0000039&#0000041>", sanitizer: @sanitizer
         ).rewrite)
 
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(
           "<img src=&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69&#x70&#x74&#x3A&#x61&#x6C&#x65&#x72&#x74&#x28&#x27&#x58&#x53&#x53&#x27&#x29>", sanitizer: @sanitizer
         ).rewrite)
 
       # Encoded tab character.
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(%[<img src="jav&#x09;ascript:alert('XSS');">],
           sanitizer: @sanitizer).rewrite)
 
       # Encoded newline.
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(%[<img src="jav&#x0A;ascript:alert('XSS');">],
           sanitizer: @sanitizer).rewrite)
 
       # Encoded carriage return.
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(%[<img src="jav&#x0D;ascript:alert('XSS');">],
           sanitizer: @sanitizer).rewrite)
 
@@ -94,7 +94,7 @@ module Selma
         Selma::HTML.new(%[<img src=java\0script:alert("XSS")>], sanitizer: @sanitizer).rewrite)
 
       # Spaces plus meta char.
-      assert_equal('<img>',
+      assert_equal("<img>",
         Selma::HTML.new(%[<img src=" &#14;  javascript:alert('XSS');">],
           sanitizer: @sanitizer).rewrite)
 

@@ -59,6 +59,59 @@ rb_selma_element_attr_set(VALUE rb_self, VALUE rb_key, VALUE rb_value)
   return rb_value;
 }
 
+VALUE
+rb_selma_element_attr_remove(VALUE rb_self, VALUE rb_attr)
+{
+  lol_html_element_t *element;
+
+  Data_Get_Struct(rb_self, lol_html_element_t, element);
+
+  char *attr = StringValueCStr(rb_attr);
+  size_t attr_len = strlen(attr);
+  int has_attr = lol_html_element_has_attribute(element, attr, attr_len);
+  int remove_status;
+
+  if (has_attr == 0) {
+    return Qnil;
+  } else if (has_attr < 0) {
+    raise_lol_html_error();
+  } else {
+    remove_status = lol_html_element_remove_attribute(element, attr, attr_len);
+    if (!remove_status) {
+
+      return Qtrue;
+    } else {
+      raise_lol_html_error();
+    }
+  }
+}
+
+VALUE
+rb_selma_element_attributes(VALUE rb_self)
+{
+  lol_html_element_t *element;
+  Data_Get_Struct(rb_self, lol_html_element_t, element);
+  VALUE rb_attributes;
+
+  lol_html_attributes_iterator_t *iter =
+    lol_html_attributes_iterator_get(element);
+  const lol_html_attribute_t *attr;
+
+  rb_attributes = rb_hash_new();
+
+  while ((attr = lol_html_attributes_iterator_next(iter))) {
+    lol_html_str_t attr_name_str = lol_html_attribute_name_get(attr);
+    lol_html_str_t attr_value_str = lol_html_attribute_value_get(attr);
+
+    rb_hash_aset(rb_attributes, rb_str_new(attr_name_str.data, attr_name_str.len), rb_str_new(attr_value_str.data, attr_value_str.len));
+
+    lol_html_str_free(attr_name_str);
+    lol_html_str_free(attr_value_str);
+  }
+
+  return rb_attributes;
+}
+
 void
 Init_selma_element_rb(void)
 {
@@ -66,8 +119,8 @@ Init_selma_element_rb(void)
 
   rb_define_method(rb_cElement, "[]", rb_selma_element_attr_get, 1);
   rb_define_method(rb_cElement, "[]=", rb_selma_element_attr_set, 2);
-  // rb_define_method(rb_cElement, "remove_attribute", rb_selma_element_attr_remove, 1);
-  // rb_define_method(rb_cElement, "attributes", rb_selma_element_attributes, 0);
+  rb_define_method(rb_cElement, "remove_attribute", rb_selma_element_attr_remove, 1);
+  rb_define_method(rb_cElement, "attributes", rb_selma_element_attributes, 0);
   // rb_define_method(rb_cElement, "children!", rb_selma_element_children_load, 0);
   // rb_define_method(rb_cElement, "text_content", rb_selma_element_text_content, 0);
   // rb_define_method(rb_cElement, "to_html", rb_selma_element_to_html, 0);
