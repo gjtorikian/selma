@@ -51,10 +51,14 @@ namespace "dependencies" do
   task "fetch" do
     FileUtils.rm_rf("ext/selma/nokogiri-gumbo-parser")
     Dir.mkdir("ext/selma/nokogiri-gumbo-parser")
+    open_url_to_file(nokogiri_url("ascii.h"), nokogiri_path("ascii.h"))
+    open_url_to_file(nokogiri_url("ascii.c"), nokogiri_path("ascii.c"))
+    open_url_to_file(nokogiri_url("macros.h"), nokogiri_path("macros.h"))
     open_url_to_file(nokogiri_url("nokogiri_gumbo.h"), nokogiri_path("nokogiri_gumbo.h"))
     open_url_to_file(nokogiri_url("tag_lookup.h"), nokogiri_path("tag_lookup.h"))
     open_url_to_file(nokogiri_url("tag_lookup.c"), nokogiri_path("tag_lookup.c"))
     open_url_to_file(nokogiri_url("tag.c"), nokogiri_path("tag.c"))
+    open_url_to_file(nokogiri_url("util.h"), nokogiri_path("util.h"))
 
     puts " \n* * *\n\n"
     FileUtils.rm_rf("ext/selma/uthash")
