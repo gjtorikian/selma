@@ -47,57 +47,6 @@ parse_replace_options(SelmaReplace *replace, VALUE rb_opts)
 }
 
 static void
-check_replace_result_1(SelmaReplace *replace, VALUE rb_result)
-{
-  switch (rb_type(rb_result)) {
-    case T_NIL:
-      break;
-
-    case T_FALSE:
-      replace->rb_result = Qfalse;
-      break;
-
-    case T_STRING:
-    case T_DATA:
-      replace->rb_result = rb_result;
-      break;
-
-    default:
-      rb_raise(rb_eTypeError,
-               "expected a String or Element");
-  }
-}
-
-static void
-check_replace_result(SelmaReplace *replace, VALUE rb_result)
-{
-  switch (rb_type(rb_result)) {
-    case T_NIL:
-      break;
-
-    case T_FALSE:
-      replace->rb_result = Qfalse;
-      break;
-
-    case T_ARRAY: {
-      VALUE rb_element = rb_ary_entry(rb_result, 0);
-      Check_Type(rb_element, T_DATA);
-      if (rb_class_of(rb_element) != rb_cElement) {
-        rb_raise(rb_eTypeError, "First element of array must be an Element");
-      }
-
-      replace->rb_result = rb_element;
-      parse_replace_options(replace, rb_ary_entry(rb_result, 1));
-      break;
-    }
-
-    default:
-      check_replace_result_1(replace, rb_result);
-      break;
-  }
-}
-
-static void
 selma_rewriter_store_stats(SelmaRewriter *rewriter)
 {
   VALUE rb_rewriter = rewriter->rb_rewriter;
