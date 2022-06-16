@@ -24,8 +24,8 @@ Or install it yourself as:
 
 ## Development
 
-* scriptupdatesubmodules
-* rake dependencies:fetch
+* `script/update_submodules`
+* `rake dependencies:fetch`
 
 ## Benchmarks
 

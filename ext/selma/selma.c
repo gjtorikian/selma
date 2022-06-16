@@ -5,7 +5,6 @@
 #include "selma_sanitizer_rb.h"
 #include "selma_rewriter.h"
 
-
 VALUE rb_mSelma;
 
 __attribute__((visibility("default"))) void Init_selma(void)

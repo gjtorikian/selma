@@ -14,7 +14,7 @@ void InitRealTime(void);
 uint64_t GetTime();
 
 double selma_get_ms(void);
-void selma_stats(VALUE rb_stats, const char *statname, int count, double value);
+void selma_stats(VALUE rb_stats, const char *statname, size_t count, double value);
 
 #ifdef __cplusplus
 };

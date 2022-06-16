@@ -40,7 +40,7 @@ selma_get_ms(void)
 }
 
 void
-selma_stats(VALUE rb_stats, const char *statname, int count,
+selma_stats(VALUE rb_stats, const char *statname, size_t count,
             double value)
 {
   VALUE rb_st = rb_ary_new_from_args(3, rb_str_new2(statname), INT2FIX(count),

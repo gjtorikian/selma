@@ -272,7 +272,7 @@ rb_selma_html_new(int argc, VALUE *argv, VALUE klass)
 
   if (!NIL_P(rb_sanitizer)) {
     if (!rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer)) {
-      rb_raise(rb_eTypeError, "expected a Selma::Sanitizer instance");
+      rb_raise(rb_eTypeError, "expected a Selma::Sanitizer instance, got %s", rb_obj_classname(rb_sanitizer));
     }
     Data_Get_Struct(rb_sanitizer, SelmaSanitizer, sanitizer);
   }
@@ -290,7 +290,8 @@ Init_selma_html(void)
   g_id_rewriter = rb_intern("@rewriter");
   g_id_sanitizer = rb_intern("@sanitizer");
   g_id_selector = rb_intern("selector");
-  g_id_process = rb_intern("process");
+  g_id_handle_element = rb_intern("handle_element");
+  g_id_handle_text = rb_intern("handle_text");
 
   rb_cHTML = rb_define_class_under(rb_mSelma, "HTML", rb_cObject);
   rb_define_singleton_method(rb_cHTML, "new", rb_selma_html_new, -1);

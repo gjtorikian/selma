@@ -4,6 +4,7 @@
 #include "nokogiri-gumbo-parser/nokogiri_gumbo.h"
 #include "uthash/utstring.h"
 
+int rb_sym_char_cmp(VALUE sym, char *str);
 void selma_utf8_strcheck(VALUE rb_str);
 VALUE utstring_to_rb(UT_string *s, bool do_free);
 VALUE gumbo_tag_to_rb(GumboTag tag);

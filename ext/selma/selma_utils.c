@@ -9,6 +9,14 @@
 
 static ID g_SelmaTagNames[GUMBO_TAG_LAST];
 
+int
+rb_sym_char_cmp(VALUE sym, char *str)
+{
+  VALUE rb_string = rb_funcall(sym, rb_intern("name"), 0);
+
+  return strcmp(rb_string, str);
+}
+
 void
 selma_utf8_strcheck(VALUE rb_str)
 {
@@ -22,7 +30,7 @@ VALUE
 utstring_to_rb(UT_string *s, bool do_free)
 {
   VALUE rb_out =
-    rb_enc_str_new(utstring_body(s), utstring_len(s), rb_utf8_encoding());
+    rb_utf8_str_new(utstring_body(s), utstring_len(s));
   if (do_free) {
     utstring_free(s);
   }

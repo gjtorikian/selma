@@ -40,7 +40,7 @@ rb_selma_element_attr_get(VALUE rb_self, VALUE rb_key)
     raise_lol_html_error();
   } else {
     lol_html_str_t attr = lol_html_element_get_attribute(element, key, key_len);
-    return rb_enc_str_new_cstr(attr.data, rb_utf8_encoding());
+    return rb_utf8_str_new(attr.data, attr.len);
   }
 }
 
@@ -103,7 +103,8 @@ rb_selma_element_attributes(VALUE rb_self)
     lol_html_str_t attr_name_str = lol_html_attribute_name_get(attr);
     lol_html_str_t attr_value_str = lol_html_attribute_value_get(attr);
 
-    rb_hash_aset(rb_attributes, rb_str_new(attr_name_str.data, attr_name_str.len), rb_str_new(attr_value_str.data, attr_value_str.len));
+    rb_hash_aset(rb_attributes, rb_str_new(attr_name_str.data, attr_name_str.len), rb_str_new(attr_value_str.data,
+                 attr_value_str.len));
 
     lol_html_str_free(attr_name_str);
     lol_html_str_free(attr_value_str);
