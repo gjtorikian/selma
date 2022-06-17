@@ -3,11 +3,16 @@
 
 #include <ruby.h>
 
+#include "uthash_utils.h"
+
 #include "lol_html.h"
+#include "uthash/utarray.h"
 
 typedef struct {
   char *match;
-  char *reject;
+  lol_html_selector_t *element_selector;
+  char *text;
+  lol_html_selector_t *text_selector;
 } SelmaSelector;
 
 void Init_selma_selector(void);

@@ -30,7 +30,8 @@ extern ID g_id_stats;
 extern ID g_id_sanitizer;
 extern ID g_id_selector;
 extern ID g_id_rewriter;
-extern ID g_id_process;
+extern ID g_id_handle_element;
+extern ID g_id_handle_text;
 extern ID g_id_adjacent_html[4];
 
 void Init_selma(void);

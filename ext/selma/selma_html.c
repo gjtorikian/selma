@@ -24,7 +24,7 @@ output_sink(const char *chunk, size_t chunk_len, void *user_data)
 
   // chunk includes end tag (eg. </a>) while chunk_len
   // only has relevant inner content (eg. "foo")
-  utstring_printf(output, "%.*s", chunk_len, chunk);
+  utstring_printf(output, "%.*s", (int)chunk_len, chunk);
 }
 
 static VALUE
@@ -132,15 +132,17 @@ perform_handler_rewrite(SelmaRewriter *selma_rewriter, char *html, UT_string *ou
 {
   lol_html_rewriter_builder_t *builder = lol_html_rewriter_builder_new();
 
-  iterate_handlers(selma_rewriter, builder);
+  construct_handlers(selma_rewriter, builder);
 
   lol_html_rewriter_t *lol_html_rewriter = initialize_rewriter(builder, output);
   lol_html_rewriter_builder_free(builder);
+
   char *sanitized_html = perform_lol_html_rewrite(lol_html_rewriter, html, output);
 
   lol_html_rewriter_end(lol_html_rewriter);
   if (lol_html_rewriter != NULL) {
     lol_html_rewriter_free(lol_html_rewriter);
+    destruct_selectors(selma_rewriter);
   } else {
     raise_lol_html_error();
   }
@@ -156,8 +158,8 @@ rb_selma_html_rewrite(VALUE self)
   rb_sanitizer = rb_iv_get(self, "@sanitizer");
   rb_rewriter = rb_iv_get(self, "@rewriter");
   rb_html = rb_iv_get(self, "@html");
-  int has_sanitizer = rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer);
-  int has_rewriter = rb_obj_is_kind_of(rb_rewriter, rb_cRewriter);
+  size_t has_sanitizer = rb_obj_is_kind_of(rb_sanitizer, rb_cSanitizer);
+  size_t has_rewriter = rb_obj_is_kind_of(rb_rewriter, rb_cRewriter);
 
   double do_measure_stats = rb_iv_get(self, "@measuring");
   double begin = selma_get_ms();
@@ -236,15 +238,20 @@ configure_default_sanitizer()
   return rb_funcall(rb_cSanitizer, rb_intern("new"), 1, rb_sanitizer_config);
 }
 
+static void
+rb_selma_html_free(SelmaHTML *selma_html)
+{
+  xfree(selma_html);
+}
+
 static VALUE
 rb_selma_html_new(int argc, VALUE *argv, VALUE klass)
 {
   VALUE rb_html, rb_string, rb_sanitizer = Qnil, rb_rewriter = Qnil, rb_handlers, rb_opts;
   SelmaHTML *html = NULL;
-  rb_html = Data_Make_Struct(klass, SelmaHTML, NULL, NULL, html);
+  rb_html = Data_Make_Struct(klass, SelmaHTML, NULL, rb_selma_html_free, html);
 
   SelmaSanitizer *sanitizer = NULL;
-  SelmaRewriter *rewriter = NULL;
 
   int do_measure_stats = 0;
 
