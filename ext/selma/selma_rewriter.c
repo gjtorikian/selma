@@ -34,19 +34,6 @@ selma_rewriter_mark(SelmaRewriter *rewriter)
 }
 
 static void
-parse_replace_options(SelmaReplace *replace, VALUE rb_opts)
-{
-  if (!NIL_P(rb_opts)) {
-    int i;
-    Check_Type(rb_opts, T_HASH);
-    for (i = 0; i < 4; ++i) {
-      replace->rb_adjacent[i] =
-        rb_hash_lookup(rb_opts, ID2SYM(g_id_adjacent_html[i]));
-    }
-  }
-}
-
-static void
 selma_rewriter_store_stats(SelmaRewriter *rewriter)
 {
   VALUE rb_rewriter = rewriter->rb_rewriter;
