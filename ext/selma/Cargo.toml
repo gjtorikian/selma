@@ -7,6 +7,7 @@ edition = "2021"
 magnus = { git = "https://github.com/gjtorikian/magnus", branch = "main" } # waiting for release with full rb-sys backend
 lol_html = { git = "https://github.com/cloudflare/lol-html", rev = "1a1ab2e2bf896f815fe8888ed78ccdf46d7c6b85" }
 html-escape = "0.2"
+enum-iterator = "1.2"
 
 [lib]
 name = "selma"

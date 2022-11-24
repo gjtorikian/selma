@@ -21,14 +21,14 @@ class SelmaRewriterMatchElementTest < Minitest::Test
 
   def test_that_it_works
     frag = "<strong>Wow!</strong>"
-    modified_doc = Selma::HTML.new(frag, sanitizer: nil, handlers: [Handler.new]).rewrite
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [Handler.new]).rewrite(frag)
     assert_equal('<strong class="boldy">Wow!</strong>', modified_doc)
   end
 
   def test_that_it_works_with_sanitizer
     sanitizer = Selma::Sanitizer.new(Selma::Sanitizer::Config::RELAXED)
     frag = "<malarky><strong><junk>Wow!</junk></strong></malarky>"
-    modified_doc = Selma::HTML.new(frag, sanitizer: sanitizer, handlers: [Handler.new]).rewrite
+    modified_doc = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [Handler.new]).rewrite(frag)
     assert_equal('<strong class="boldy">Wow!</strong>', modified_doc)
   end
 
@@ -60,13 +60,13 @@ class SelmaRewriterMatchElementTest < Minitest::Test
 
   def test_that_it_performs_handlers_in_order
     frag = "<div>Wow!</div>"
-    modified_doc = Selma::HTML.new(frag, sanitizer: @sanitizer, handlers: [FirstRewrite.new]).rewrite
+    modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [FirstRewrite.new]).rewrite(frag)
     assert_equal('<div class="boldy">Wow!</div>', modified_doc)
 
-    modified_doc = Selma::HTML.new(frag, sanitizer: @sanitizer, handlers: [SecondRewrite.new]).rewrite
+    modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [SecondRewrite.new]).rewrite(frag)
     assert_equal(frag, modified_doc)
 
-    modified_doc = Selma::HTML.new(frag, sanitizer: @sanitizer, handlers: [FirstRewrite.new, SecondRewrite.new]).rewrite
+    modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [FirstRewrite.new, SecondRewrite.new]).rewrite(frag)
     assert_equal('<div class="boldy boldy2">Wow!</div>', modified_doc)
   end
 end

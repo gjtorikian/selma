@@ -1,9 +1,10 @@
-use std::{borrow::BorrowMut, collections::HashMap};
+use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
 
 use html_escape::encode_unquoted_attribute;
 use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
 use magnus::{
-    class, function, method, Error, Module, Object, RArray, RHash, RModule, Symbol, Value,
+    class, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule, Symbol,
+    Value,
 };
 
 use crate::tags::{HTMLTag, Tag};
@@ -43,17 +44,37 @@ impl SelmaSanitizer {
     const SELMA_SANITIZER_REMOVE_CONTENTS: u8 = (1 << 1);
     const SELMA_SANITIZER_WRAP_WHITESPACE: u8 = (1 << 2);
 
-    fn new(config: RHash) -> Self {
-        Self(std::cell::RefCell::new(Sanitizer {
+    pub fn new(arguments: &[Value]) -> Result<Self, Error> {
+        let args = scan_args::scan_args::<(), (Option<RHash>,), (), (), (), ()>(arguments)?;
+        let (opt_config,): (Option<RHash>,) = args.optional;
+
+        let config = match opt_config {
+            Some(config) => config,
+            None => magnus::eval::<RHash>(r#"Selma::Sanitizer::Config::DEFAULT"#).unwrap(),
+        };
+
+        let mut element_sanitizers = HashMap::new();
+        Tag::html_tags().iter().for_each(|html_tag| {
+            let es = ElementSanitizer {
+                allowed_attrs: vec![],
+                allowed_classes: vec![],
+                required_attrs: vec![],
+
+                protocol_sanitizers: HashMap::new(),
+            };
+            element_sanitizers.insert(Tag::element_name_from_enum(html_tag).to_string(), es);
+        });
+
+        Ok(Self(std::cell::RefCell::new(Sanitizer {
             flags: [0; HTMLTag::LAST as usize],
             allowed_attrs: vec![],
             allowed_classes: vec![],
-            element_sanitizers: HashMap::new(),
+            element_sanitizers,
             name_prefix: "".to_string(),
             allow_comments: false,
             allow_doctype: false,
             config,
-        }))
+        })))
     }
 
     fn config(&self) -> RHash {
@@ -62,11 +83,24 @@ impl SelmaSanitizer {
 
     /// Toggle a sanitizer option on or off.
     fn set_flag(&self, element: String, flag: u8, set: bool) {
-        let tag = Tag::tag_from_enum(&element);
+        let tag = Tag::tag_from_element_name(&element);
         if set {
             self.0.borrow_mut().flags[tag.index] |= flag;
         } else {
             self.0.borrow_mut().flags[tag.index] &= !flag;
+        }
+    }
+
+    /// Toggles all sanitization options on or off.
+    fn set_all_flags(&self, flag: u8, set: bool) {
+        if set {
+            Tag::html_tags().iter().enumerate().for_each(|(iter, _)| {
+                self.0.borrow_mut().flags[iter] |= flag;
+            });
+        } else {
+            Tag::html_tags().iter().enumerate().for_each(|(iter, _)| {
+                self.0.borrow_mut().flags[iter] &= flag;
+            });
         }
     }
 
@@ -102,7 +136,7 @@ impl SelmaSanitizer {
             let allowed_attrs = &mut binding.allowed_attrs;
             Self::set_allowed(allowed_attrs, &attr_name, allow);
         } else {
-            let element_sanitizer = Self::get_element_sanitizer(&mut binding, &element_name);
+            let element_sanitizer = Self::get_mut_element_sanitizer(&mut binding, &element_name);
 
             element_sanitizer.allowed_attrs.push(attr_name);
         }
@@ -163,8 +197,8 @@ impl SelmaSanitizer {
         }
 
         let mut binding = self.0.borrow_mut();
-        let tag = Tag::tag_from_enum(&element.tag_name().to_lowercase());
-        let element_sanitizer = &Self::get_element_sanitizer(&mut binding, &element.tag_name());
+        let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
+        let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
 
         // FIXME: This is a hack to get around the fact that we can't borrow
         let attribute_map: HashMap<String, String> = element
@@ -178,8 +212,8 @@ impl SelmaSanitizer {
             // an HTML tag to pass malicious data. If this is
             // encountered, remove the entire element to be safe.
             if attr_name.starts_with("<!--") {
-                let tag = Tag::tag_from_enum(&element.tag_name().to_lowercase());
-                let flags: u8 = binding.flags[tag.index];
+                let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
+                let flags: u8 = self.0.borrow().flags[tag.index];
 
                 Self::force_remove_element(self, element, tag, flags);
                 return;
@@ -194,7 +228,7 @@ impl SelmaSanitizer {
                 // element.set_attribute(attr_name, unescaped);
 
                 if !Self::should_keep_attribute(
-                    self,
+                    &binding,
                     element,
                     element_sanitizer,
                     attr_name,
@@ -242,7 +276,7 @@ impl SelmaSanitizer {
     }
 
     fn should_keep_attribute(
-        &self,
+        binding: &RefMut<Sanitizer>,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
         attr_name: &String,
@@ -250,7 +284,7 @@ impl SelmaSanitizer {
     ) -> bool {
         let mut allowed = element_sanitizer.allowed_attrs.contains(attr_name);
 
-        if !allowed && self.0.borrow().allowed_attrs.contains(attr_name) {
+        if !allowed && binding.allowed_attrs.contains(attr_name) {
             allowed = true;
         }
 
@@ -260,16 +294,24 @@ impl SelmaSanitizer {
 
         let protocol_sanitizer_values = element_sanitizer.protocol_sanitizers.get(attr_name);
         match protocol_sanitizer_values {
-            None => {}
+            None => {
+                return false;
+            }
             Some(protocol_sanitizer_values) => {
-                if !Self::has_allowed_protocol(protocol_sanitizer_values, element, attr_val) {
+                if !Self::has_allowed_protocol(protocol_sanitizer_values, attr_val) {
                     return false;
                 }
             }
         }
 
         if attr_name == "class"
-            && !self.sanitize_class_attribute(element, element_sanitizer, attr_name, attr_val)
+            && !Self::sanitize_class_attribute(
+                binding,
+                element,
+                element_sanitizer,
+                attr_name,
+                attr_val,
+            )
         {
             return false;
         }
@@ -277,11 +319,7 @@ impl SelmaSanitizer {
         true
     }
 
-    fn has_allowed_protocol(
-        protocols_allowed: &Vec<String>,
-        _element: &mut Element,
-        attr_val: &String,
-    ) -> bool {
+    fn has_allowed_protocol(protocols_allowed: &Vec<String>, attr_val: &String) -> bool {
         if attr_val == "/" {
             return protocols_allowed.contains(&"/".to_string());
         }
@@ -295,13 +333,13 @@ impl SelmaSanitizer {
     }
 
     fn sanitize_class_attribute(
-        &self,
+        binding: &RefMut<Sanitizer>,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
         attr_name: &String,
         attr_val: &String,
     ) -> bool {
-        let allowed_global = &self.0.borrow().allowed_classes;
+        let allowed_global = &binding.allowed_classes;
 
         let mut valid_classes: Vec<String> = vec![];
 
@@ -332,7 +370,7 @@ impl SelmaSanitizer {
     }
 
     pub fn try_remove_element(&self, element: &mut Element) -> bool {
-        let tag = Tag::tag_from_enum(&element.tag_name().to_lowercase());
+        let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
         let flags: u8 = self.0.borrow().flags[tag.index];
 
         let should_remove: bool = (flags & Self::SELMA_SANITIZER_ALLOW) == 0;
@@ -384,7 +422,8 @@ impl SelmaSanitizer {
     }
 
     fn check_if_end_tag_needs_removal(element: &mut Element) {
-        if element.removed() && !Tag::tag_from_enum(&element.tag_name().to_lowercase()).self_closing
+        if element.removed()
+            && !Tag::tag_from_element_name(&element.tag_name().to_lowercase()).self_closing
         {
             element
                 .on_end_tag(move |end| {
@@ -400,37 +439,29 @@ impl SelmaSanitizer {
     }
 
     fn get_element_sanitizer<'a>(
-        sanitizer: &'a mut Sanitizer,
+        binding: &'a RefMut<Sanitizer>,
+        element_name: &str,
+    ) -> &'a ElementSanitizer {
+        binding.element_sanitizers.get(element_name).unwrap()
+    }
+
+    fn get_mut_element_sanitizer<'a>(
+        binding: &'a mut RefMut<Sanitizer>,
         element_name: &str,
     ) -> &'a mut ElementSanitizer {
-        let element_sanitizer = sanitizer.element_sanitizers.get(element_name);
-
-        match element_sanitizer {
-            None => {
-                let es = ElementSanitizer {
-                    allowed_attrs: vec![],
-                    allowed_classes: vec![],
-                    required_attrs: vec![],
-
-                    protocol_sanitizers: HashMap::new(),
-                };
-                sanitizer
-                    .element_sanitizers
-                    .insert(element_name.to_string(), es.clone());
-            }
-            Some(_) => {}
-        }
-        sanitizer.element_sanitizers.get_mut(element_name).unwrap()
+        binding.element_sanitizers.get_mut(element_name).unwrap()
     }
 }
 
 pub fn init(m_selma: RModule) -> Result<(), Error> {
     let c_sanitizer = m_selma.define_class("Sanitizer", Default::default())?;
 
-    c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, 1))?;
+    c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
     c_sanitizer.define_method("config", method!(SelmaSanitizer::config, 0))?;
 
     c_sanitizer.define_method("set_flag", method!(SelmaSanitizer::set_flag, 3))?;
+    c_sanitizer.define_method("set_all_flags", method!(SelmaSanitizer::set_all_flags, 2))?;
+
     c_sanitizer.define_method(
         "set_allow_comments",
         method!(SelmaSanitizer::set_allow_comments, 1),

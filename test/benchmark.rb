@@ -66,14 +66,14 @@ def compare_rewriting
 
     x.report("selma") do
       html = CommonMarker.render_html(REWRITE_INPUT)
-      Selma::HTML.new(html, sanitize: SelmaConfig::ALLOWLIST, handlers: [
+      Selma::Rewriter.new(sanitize: SelmaConfig::ALLOWLIST, handlers: [
         SelmaConfig::CamoHandler.new,
         SelmaConfig::ImageMaxWidthHandler.new,
         SelmaConfig::HttpsHandler.new,
         SelmaConfig::MentionHandler.new,
         SelmaConfig::EmojiHandler.new,
         SelmaConfig::SyntaxHighlightHandler.new,
-      ]).rewrite
+      ]).rewrite(html)
     end
 
     x.compare!

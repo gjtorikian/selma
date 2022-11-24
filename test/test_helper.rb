@@ -3,9 +3,6 @@
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "selma"
 
-# do one final major before the process exits (for valgrind)
-at_exit { GC.start(full_mark: true) }
-
 require "minitest/autorun"
 require "minitest/focus"
 require "minitest-spec-context"
