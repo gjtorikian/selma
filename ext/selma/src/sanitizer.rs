@@ -3,7 +3,7 @@ use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
 use html_escape::encode_unquoted_attribute;
 use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
 use magnus::{
-    class, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule, Symbol,
+    class, exception, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule,
     Value,
 };
 
@@ -32,12 +32,6 @@ pub struct Sanitizer {
 #[derive(Clone, Debug)]
 #[magnus::wrap(class = "Selma::Sanitizer")]
 pub struct SelmaSanitizer(std::cell::RefCell<Sanitizer>);
-
-#[magnus::wrap(class = "Selma::Sanitizer::ListTypes")]
-enum SelmaListTypes {
-    String(String),
-    Symbol(Symbol),
-}
 
 impl SelmaSanitizer {
     const SELMA_SANITIZER_ALLOW: u8 = (1 << 0);
@@ -151,11 +145,9 @@ impl SelmaSanitizer {
             let allowed_classes = &mut binding.allowed_classes;
             Self::set_allowed(allowed_classes, &class_name, allow);
         } else {
-            let element_sanitizer = Self::get_element_sanitizer(&binding, &element_name);
+            let element_sanitizer = Self::get_mut_element_sanitizer(&mut binding, &element_name);
 
-            let mut es = element_sanitizer.clone();
-
-            let allowed_classes = es.allowed_classes.borrow_mut();
+            let allowed_classes = element_sanitizer.allowed_classes.borrow_mut();
             Self::set_allowed(allowed_classes, &class_name, allow)
         }
         allow
@@ -184,8 +176,10 @@ impl SelmaSanitizer {
             {
                 match protocol_list {
                     None => {
-                        protocol_sanitizers
-                            .insert(attr_name.clone(), vec!["#".to_string(), "/".to_string()]);
+                        protocol_sanitizers.insert(
+                            attr_name.to_string(),
+                            vec!["#".to_string(), "/".to_string()],
+                        );
                     }
                     Some(protocol_list) => {
                         protocol_list.push("#".to_string());
@@ -198,7 +192,7 @@ impl SelmaSanitizer {
 
     fn set_allowed(set: &mut Vec<String>, attr_name: &String, allow: bool) {
         if allow {
-            set.push(attr_name.clone());
+            set.push(attr_name.to_string());
         } else if set.contains(attr_name) {
             set.swap_remove(set.iter().position(|x| x == attr_name).unwrap());
         }
@@ -325,6 +319,7 @@ impl SelmaSanitizer {
                 attr_name,
                 attr_val,
             )
+            .unwrap()
         {
             return false;
         }
@@ -334,8 +329,7 @@ impl SelmaSanitizer {
 
     fn has_allowed_protocol(protocols_allowed: &Vec<String>, attr_val: &String) -> bool {
         let mut protocol = String::new();
-        let mut chars = attr_val.chars();
-        for c in chars {
+        for c in attr_val.chars() {
             match c {
                 ':' => break,
                 '/' => break,
@@ -362,18 +356,18 @@ impl SelmaSanitizer {
         binding: &RefMut<Sanitizer>,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
-        attr_name: &String,
-        attr_val: &String,
-    ) -> bool {
+        attr_name: &str,
+        attr_val: &str,
+    ) -> Result<bool, Error> {
         let allowed_global = &binding.allowed_classes;
 
         let mut valid_classes: Vec<String> = vec![];
 
-        let allowed_local: Vec<String> = element_sanitizer.allowed_classes.clone();
+        let allowed_local = &element_sanitizer.allowed_classes;
 
         // No class filters, so everything goes through
         if allowed_global.is_empty() && allowed_local.is_empty() {
-            return true;
+            return Ok(true);
         }
 
         let attr_value = attr_val.trim_start();
@@ -387,12 +381,16 @@ impl SelmaSanitizer {
             });
 
         if valid_classes.is_empty() {
-            return false;
+            return Ok(false);
         }
 
-        element.set_attribute(attr_name, valid_classes.join(" ").as_str());
-
-        true
+        match element.set_attribute(attr_name, valid_classes.join(" ").as_str()) {
+            Ok(_) => Ok(true),
+            Err(err) => Err(Error::new(
+                exception::runtime_error(),
+                format!("AttributeNameError: {}", err),
+            )),
+        }
     }
 
     pub fn try_remove_element(&self, element: &mut Element) -> bool {

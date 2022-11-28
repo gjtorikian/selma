@@ -1,6 +1,6 @@
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::Element;
-use magnus::{function, method, Error, Module, RClass, RHash};
+use magnus::{exception, function, method, Error, Module, RClass, RHash};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,
@@ -27,11 +27,16 @@ impl SelmaHTMLElement {
         element.unwrap().get_attribute(&attr)
     }
 
-    fn set_attribute(&self, attr: String, value: String) {
+    fn set_attribute(&self, attr: String, value: String) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
+        let element = binding.element.get_mut().unwrap();
 
-        if let Ok(e) = binding.element.get_mut() {
-            e.set_attribute(&attr, &value);
+        match element.set_attribute(&attr, &value) {
+            Ok(_) => Ok(value),
+            Err(err) => Err(Error::new(
+                exception::runtime_error(),
+                format!("AttributeNameError: {}", err),
+            )),
         }
     }
 
@@ -43,16 +48,23 @@ impl SelmaHTMLElement {
         }
     }
 
-    fn attributes(&self) -> RHash {
+    fn attributes(&self) -> Result<RHash, Error> {
         let binding = self.0.borrow();
         let hash = RHash::new();
 
         if let Ok(e) = binding.element.get() {
-            e.attributes().iter().for_each(|attr| {
-                hash.aset(attr.name(), attr.value());
-            });
+            e.attributes()
+                .iter()
+                .for_each(|attr| match hash.aset(attr.name(), attr.value()) {
+                    Ok(_) => {}
+                    Err(err) => Err(Error::new(
+                        exception::runtime_error(),
+                        format!("AttributeNameError: {}", err),
+                    ))
+                    .unwrap(),
+                });
         }
-        hash
+        Ok(hash)
     }
 
     fn prepend(_x: isize, _y: isize) {}

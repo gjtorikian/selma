@@ -72,13 +72,13 @@ impl SelmaRewriter {
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
                 let wrapped_sanitizer = WrappedStruct::from(default_sanitizer);
                 wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                Some(wrapped_sanitizer.get().unwrap().clone())
+                Some(wrapped_sanitizer.get().unwrap().to_owned())
             }
             Some(sanitizer_value) => match sanitizer_value {
                 None => None,
                 Some(sanitizer) => {
                     sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                    Some(sanitizer.get().unwrap().clone())
+                    Some(sanitizer.get().unwrap().to_owned())
                 }
             },
         };
