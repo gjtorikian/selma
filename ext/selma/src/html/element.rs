@@ -21,10 +21,10 @@ impl SelmaHTMLElement {
 
     fn tag_name() {}
 
-    fn get_attribute(&self, attr: String) -> String {
+    fn get_attribute(&self, attr: String) -> Option<String> {
         let binding = self.0.borrow();
         let element = binding.element.get();
-        element.unwrap().get_attribute(&attr).unwrap()
+        element.unwrap().get_attribute(&attr)
     }
 
     fn set_attribute(&self, attr: String, value: String) {
@@ -45,7 +45,7 @@ impl SelmaHTMLElement {
 
     fn attributes(&self) -> RHash {
         let binding = self.0.borrow();
-        let mut hash = RHash::new();
+        let hash = RHash::new();
 
         if let Ok(e) = binding.element.get() {
             e.attributes().iter().for_each(|attr| {

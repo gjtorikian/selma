@@ -160,10 +160,11 @@ pub enum HTMLTag {
     RTC,
     DIALOG,
     UNKNOWN,
-    LAST,
 }
 
 impl Tag {
+    pub const TAG_COUNT: usize = 151;
+
     /// Identifies whether this is an HTML tag whose contents
     /// are considered "text nodes", and thus, must be removed
     pub fn has_text_content(tag: Tag) -> bool {

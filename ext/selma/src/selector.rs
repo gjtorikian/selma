@@ -1,7 +1,4 @@
-use magnus::{
-    exception, function, scan_args, DataTypeFunctions, Error, Module, Object, RArray, RHash,
-    RModule, Symbol, TypedData, Value,
-};
+use magnus::{exception, function, scan_args, Error, Module, Object, RArray, RModule, Value};
 
 #[derive(Clone, Debug)]
 #[magnus::wrap(class = "Selma::Selector")]
@@ -28,6 +25,31 @@ impl SelmaSelector {
                 exception::type_error(),
                 "Neither `match_element` nor `match_text_within` option given",
             ));
+        }
+
+        // FIXME: not excited about this double parse work (`element!` does it too),
+        // but at least we can bail ASAP if the CSS is invalid
+        if match_element.is_some() {
+            let css = match_element.clone().unwrap();
+            if css.parse::<lol_html::Selector>().is_err() {
+                return Err(Error::new(
+                    exception::arg_error(),
+                    format!("Could not parse `match_element` (\"{}\") as valid CSS", css),
+                ));
+            }
+        }
+
+        if match_text_within.is_some() {
+            let css = match_text_within.clone().unwrap();
+            if css.parse::<lol_html::Selector>().is_err() {
+                return Err(Error::new(
+                    exception::arg_error(),
+                    format!(
+                        "Could not parse `match_text_within` (\"{}\") as valid CSS",
+                        css
+                    ),
+                ));
+            }
         }
 
         let mut ignore_text_within: Vec<String> = vec![];

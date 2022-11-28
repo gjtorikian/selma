@@ -67,7 +67,7 @@ module Selma
 
       assert_equal("<img>",
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite(
-          "<img src=&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69&#x70&#x74&#x3A&#x61&#x6C&#x65&#x72&#x74&#x28&#x27&#x58&#x53&#x53&#x27&#x29>", sanitizer: @sanitizer
+          "<img src=&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69&#x70&#x74&#x3A&#x61&#x6C&#x65&#x72&#x74&#x28&#x27&#x58&#x53&#x53&#x27&#x29>",
         ))
 
       # Encoded tab character.
@@ -83,7 +83,7 @@ module Selma
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite(%[<img src="jav&#x0D;ascript:alert('XSS');">]))
 
       # Null byte.
-      assert_equal("",
+      assert_equal("<img>",
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite(%[<img src=java\0script:alert("XSS")>]))
 
       # Spaces plus meta char.

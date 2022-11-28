@@ -47,40 +47,4 @@ class SelmaRewriterMatchAttributeTest < Minitest::Test
     frag = "<article><div class='a b c 1 2 3' data-foo='baz'>Wow!</div></article>"
     Selma::Rewriter.new(sanitizer: nil, handlers: [GetAttrs.new]).rewrite(frag)
   end
-
-  class InvalidCSS
-    SELECTOR = Selma::Selector.new(match_element: %(a[href=]))
-
-    def selector
-      SELECTOR
-    end
-
-    def handle_element(element) # never called
-      element["href"] = element["href"].sub(/^http:/, "https:")
-    end
-  end
-
-  def test_that_it_defends_against_invalid_css
-    frag = %(<a href="http://github.com">github.com</a>)
-    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [InvalidCSS.new]).rewrite(frag)
-    assert_equal(frag, modified_doc)
-  end
-
-  class EmptyCSS
-    SELECTOR = Selma::Selector.new(match_element: "")
-
-    def selector
-      SELECTOR
-    end
-
-    def handle_element(element) # never called
-      element["href"] = element["href"].sub(/^http:/, "https:")
-    end
-  end
-
-  def test_that_it_reports_against_empty_css
-    frag = %(<a href="http://github.com">github.com</a>)
-    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [EmptyCSS.new]).rewrite(frag)
-    assert_equal(frag, modified_doc)
-  end
 end
