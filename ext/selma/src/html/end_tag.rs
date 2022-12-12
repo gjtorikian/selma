@@ -20,7 +20,7 @@ impl SelmaHTMLEndTag {
     }
 
     fn tag_name(&self) -> String {
-        self.0.borrow().end_tag.get().unwrap().name()
+        self.0.borrow().end_tag.get_ref().unwrap().name()
     }
 }
 

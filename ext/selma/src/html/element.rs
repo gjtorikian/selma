@@ -14,7 +14,7 @@ unsafe impl Send for SelmaHTMLElement {}
 
 impl SelmaHTMLElement {
     pub fn new(element: &mut Element) -> Self {
-        let (ref_wrap, _anchor) = NativeRefWrap::wrap(element);
+        let (ref_wrap, _anchor) = NativeRefWrap::wrap_mut(element);
 
         Self(std::cell::RefCell::new(HTMLElement { element: ref_wrap }))
     }
@@ -23,7 +23,7 @@ impl SelmaHTMLElement {
 
     fn get_attribute(&self, attr: String) -> Option<String> {
         let binding = self.0.borrow();
-        let element = binding.element.get();
+        let element = binding.element.get_ref();
         element.unwrap().get_attribute(&attr)
     }
 
@@ -52,7 +52,7 @@ impl SelmaHTMLElement {
         let binding = self.0.borrow();
         let hash = RHash::new();
 
-        if let Ok(e) = binding.element.get() {
+        if let Ok(e) = binding.element.get_ref() {
             e.attributes()
                 .iter()
                 .for_each(|attr| match hash.aset(attr.name(), attr.value()) {

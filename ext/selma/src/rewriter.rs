@@ -1,13 +1,11 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 use lol_html::{
     doc_comments, doctype, element,
-    html_content::{ContentType, Element, TextChunk},
+    html_content::{ContentType, Element, EndTag, TextChunk},
     text, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
-use magnus::{
-    exception, function, method, scan_args, Error, Module, Object, RArray, RModule, Value,
-};
+use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
@@ -17,26 +15,24 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-struct Handler {
+pub struct Handler {
     rb_handler: Value,
     rb_selector: WrappedStruct<SelmaSelector>,
+
     total_element_handler_calls: usize,
     total_elapsed_element_handlers: f64,
 
     total_text_handler_calls: usize,
     total_elapsed_text_handlers: f64,
-
-    encountered_elements: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
 pub struct Rewriter {
     sanitizer: Option<SelmaSanitizer>,
     handlers: Vec<Handler>,
+
     total_elapsed: f64,
 }
 
-#[derive(Clone, Debug)]
 #[magnus::wrap(class = "Selma::Rewriter")]
 pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
 
@@ -53,19 +49,8 @@ impl SelmaRewriter {
     /// @param sanitizer [Selma::Sanitizer] The sanitizer which performs the initial cleanup
     /// @param handlers  [Array<Selma::Selector>] The handlers to use to perform HTML rewriting
     /// @return [Selma::Rewriter]
-    fn new(arguments: &[Value]) -> Result<Self, Error> {
-        let args = scan_args::scan_args::<(), (), (), (), _, ()>(arguments)?;
-        let kw = scan_args::get_kwargs::<
-            _,
-            (),
-            (
-                Option<Option<WrappedStruct<SelmaSanitizer>>>,
-                Option<RArray>,
-            ),
-            (),
-        >(args.keywords, &[], &["sanitizer", "handlers"])?;
-
-        let (rb_sanitizer, rb_handlers) = kw.optional;
+    fn new(args: &[Value]) -> Result<Self, magnus::Error> {
+        let (rb_sanitizer, rb_handlers) = Self::scan_parse_args(args)?;
 
         let sanitizer = match rb_sanitizer {
             None => {
@@ -87,19 +72,33 @@ impl SelmaRewriter {
             None => vec![],
             Some(rb_handlers) => {
                 let mut handlers: Vec<Handler> = vec![];
-                for r in rb_handlers.each() {
-                    let rb_handler = r.unwrap();
+
+                for h in rb_handlers.each() {
+                    let rb_handler = h.unwrap();
 
                     // prevents missing #selector from ruining things
                     if !rb_handler.respond_to("selector", true).unwrap() {
+                        let classname = unsafe { rb_handler.classname() };
                         return Err(magnus::Error::new(
-                            exception::type_error(),
-                            "Handler values must be instantiated classes",
+                            exception::no_method_error(),
+                            format!(
+                                "Could not call #selector on {:?}; is this an object that defines it?",
+                                classname
+                            ),
                         ));
                     }
 
-                    let rb_selector = rb_handler.funcall("selector", ()).unwrap();
-                    handlers.push(Handler {
+                    let rb_selector: WrappedStruct<SelmaSelector> =
+                        match rb_handler.funcall("selector", ()) {
+                            Err(e) => {
+                                return Err(magnus::Error::new(
+                                    exception::type_error(),
+                                    format!("Error instantiating selector: {}", e),
+                                ));
+                            }
+                            Ok(rb_selector) => rb_selector,
+                        };
+                    let handler = Handler {
                         rb_handler,
                         rb_selector,
                         total_element_handler_calls: 0,
@@ -107,9 +106,8 @@ impl SelmaRewriter {
 
                         total_text_handler_calls: 0,
                         total_elapsed_text_handlers: 0.0,
-
-                        encountered_elements: vec![],
-                    })
+                    };
+                    handlers.push(handler);
                 }
                 handlers
             }
@@ -129,8 +127,39 @@ impl SelmaRewriter {
         })))
     }
 
+    #[allow(clippy::let_unit_value)]
+    fn scan_parse_args(
+        args: &[Value],
+    ) -> Result<
+        (
+            Option<Option<WrappedStruct<SelmaSanitizer>>>,
+            Option<RArray>,
+        ),
+        magnus::Error,
+    > {
+        let args = scan_args::scan_args(args)?;
+        let _: () = args.required;
+        let _: () = args.optional;
+        let _: () = args.splat;
+        let _: () = args.trailing;
+        let _: () = args.block;
+
+        let kw = scan_args::get_kwargs::<
+            _,
+            (),
+            (
+                Option<Option<WrappedStruct<SelmaSanitizer>>>,
+                Option<RArray>,
+            ),
+            (),
+        >(args.keywords, &[], &["sanitizer", "handlers"])?;
+        let (rb_sanitizer, rb_handlers) = kw.optional;
+
+        Ok((rb_sanitizer, rb_handlers))
+    }
+
     /// Perform HTML rewrite sequence.
-    fn rewrite(&self, html: String) -> Result<String, Error> {
+    fn rewrite(&self, html: String) -> Result<String, magnus::Error> {
         let sanitized_html = match &self.0.borrow().sanitizer {
             None => html,
             Some(sanitizer) => {
@@ -146,15 +175,17 @@ impl SelmaRewriter {
                 String::from_utf8(final_html).unwrap()
             }
         };
+        let binding = self.0.borrow_mut();
+        let handlers = &binding.handlers;
 
-        let rewritten_html = Self::perform_handler_rewrite(self, sanitized_html).unwrap();
+        let rewritten_html = Self::perform_handler_rewrite(self, handlers, sanitized_html).unwrap();
         Ok(String::from_utf8(rewritten_html).unwrap())
     }
 
     fn perform_initial_sanitization(
         sanitizer: &SelmaSanitizer,
         html: &String,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, magnus::Error> {
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
@@ -186,7 +217,7 @@ impl SelmaRewriter {
     fn perform_final_sanitization(
         sanitizer: &SelmaSanitizer,
         html: &[u8],
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, magnus::Error> {
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
@@ -205,29 +236,75 @@ impl SelmaRewriter {
         Ok(output)
     }
 
-    pub fn perform_handler_rewrite(&self, html: String) -> Result<Vec<u8>, Error> {
-        // TODO: this should be done ahead of time, not on every call
-        // let element_content_handlers = Self::construct_handlers(self);
+    pub fn perform_handler_rewrite(
+        &self,
+        handlers: &Vec<Handler>,
+        html: String,
+    ) -> Result<Vec<u8>, magnus::Error> {
+        // TODO: this should ideally be done ahead of time, not on every call
         let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
 
-        self.0.borrow().handlers.iter().for_each(|h| {
-            let selector = h.rb_selector.get().unwrap();
+        handlers.iter().for_each(|handler| {
+            let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
+
+            let selector = handler.rb_selector.get_static().unwrap();
 
             // TODO: test final raise by simulating errors
             if selector.match_element().is_some() {
                 element_content_handlers.push(element!(selector.match_element().unwrap(), |el| {
-                    Self::process_element_handlers(self, el);
+                    Self::process_element_handlers(handler.rb_handler, el);
                     Ok(())
                 }));
             }
+
             if selector.match_text_within().is_some() {
+                let closure_element_stack = element_stack.clone();
                 element_content_handlers.push(text!(
                     selector.match_text_within().unwrap(),
-                    |text| {
-                        Self::process_text_handlers(self, text);
-                        Ok(())
+                    move |text| {
+                        let element_stack = closure_element_stack.as_ref().borrow();
+                        if selector.ignore_text_within().is_some() && !element_stack.is_empty() {
+                            // check if current tag is a tag we should be ignoring text within
+                            let head_tag_name = element_stack.last().unwrap().to_string();
+                            if selector
+                                .ignore_text_within()
+                                .unwrap()
+                                .iter()
+                                .any(|f| f == &head_tag_name)
+                            {
+                                return Ok(());
+                            }
+                        }
+
+                        Self::process_text_handlers(handler.rb_handler, text);
+                        Ok(()) // TODO: handle `process_text_handlers` Result
                     }
                 ));
+            }
+
+            // let mut s = element_stack.as_ref().borrow_mut();
+            // let mut closure_element_stack = element_stack.clone();
+            // if we're tracking parent elements to ignore, we need to check
+            // *every* element we iterate over, to create a stack of elements
+            if selector.ignore_text_within().is_some() {
+                element_content_handlers.push(element!("*", move |el| {
+                    // no need to track self-closing tags
+                    if el.is_self_closing() {
+                        return Ok(());
+                    }
+                    let tag_name = el.tag_name();
+
+                    element_stack.as_ref().borrow_mut().push(tag_name);
+                    // element_stack.borrow_mut().push(tag_name);
+                    let closure_element_stack = element_stack.clone();
+
+                    el.on_end_tag(move |_end_tag: &mut EndTag| {
+                        let mut stack = closure_element_stack.as_ref().borrow_mut();
+                        stack.pop();
+                        Ok(())
+                    });
+                    Ok(())
+                }));
             }
         });
         let mut output = vec![];
@@ -244,95 +321,63 @@ impl SelmaRewriter {
         Ok(output)
     }
 
-    // fn construct_handlers(&self) -> Vec<(Cow<Selector>, ElementContentHandlers<'static>)> {
-    //     let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
+    fn process_element_handlers(rb_handler: Value, element: &mut Element) {
+        // if `on_end_tag` function is defined, call it
+        if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
+            element
+                .on_end_tag(move |end_tag| {
+                    let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
 
-    //     self.0.borrow().handlers.iter().for_each(|h| {
-    //         let selector = &h.selector;
-    //         // TODO: test final raise by simulating errors
-    //         if !selector.match_element().is_empty() {
-    //             element_content_handlers.push(element!(selector.match_element(), |el| {
-    //                 Self::process_element_handlers(self, el);
-    //                 Ok(())
-    //             }));
-    //         }
-    //         if !selector.text_element().is_empty() {
-    //             element_content_handlers.push(text!(selector.match_element(), |text| {
-    //                 Self::process_text_handlers(self, text);
-    //                 Ok(())
-    //             }));
-    //         }
-    //     });
-    //     element_content_handlers
-    // }
+                    rb_handler
+                        .funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,))
+                        .unwrap();
+                    Ok(())
+                })
+                .unwrap();
+        }
 
-    fn process_element_handlers(&self, element: &mut Element) {
-        let handlers = unsafe { &(*self.0.as_ptr()).handlers };
-        handlers.iter().for_each(|handler| {
-            if handler
-                .rb_handler
-                .respond_to(Self::SELMA_ON_END_TAG, true)
-                .unwrap()
-            {
-                element
-                    .on_end_tag(move |end_tag| {
-                        let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
-
-                        handler
-                            .rb_handler
-                            .funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,))
-                            .unwrap();
-                        Ok(())
-                    })
-                    .unwrap();
+        // prevents missing `handle_element` function
+        let rb_element = SelmaHTMLElement::new(element);
+        let rb_result =
+            rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
+        match rb_result {
+            Ok(_) => {}
+            Err(e) => {
+                let classname = unsafe { rb_handler.classname() };
+                log::warn!(
+                    "Could not call #{:?} on {:?}; is it defined?",
+                    Self::SELMA_HANDLE_ELEMENT,
+                    classname
+                );
+                log::warn!("Error: {:?}", e);
             }
-
-            // prevents missing `handle_element` function
-            if handler
-                .rb_handler
-                .respond_to(Self::SELMA_HANDLE_ELEMENT, true)
-                .unwrap()
-            {
-                let rb_element = SelmaHTMLElement::new(element);
-
-                handler
-                    .rb_handler
-                    .funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,))
-                    .unwrap();
-            }
-        });
+        }
     }
 
-    fn process_text_handlers(&self, text: &mut TextChunk) {
-        self.0.borrow().handlers.iter().for_each(|handler| {
-            // prevents missing `handle_text` function
-            if handler
-                .rb_handler
-                .respond_to(Self::SELMA_HANDLE_TEXT, true)
-                .unwrap()
-            {
-                // if !handler.selector.ignore_text_within().is_empty()
-                //     && !handler.encountered_elements.is_empty()
-                {}
+    fn process_text_handlers(rb_handler: Value, text: &mut TextChunk) -> Result<(), magnus::Error> {
+        // prevents missing `handle_text` function
+        let content = text.as_str();
+        let rb_result = rb_handler.funcall(Self::SELMA_HANDLE_TEXT, (content,));
 
-                let content = text.as_str();
-                let rb_result: Result<String, Error> = handler
-                    .rb_handler
-                    .funcall(Self::SELMA_HANDLE_TEXT, (content,));
+        if rb_result.is_err() {
+            return Err(magnus::Error::new(
+                exception::type_error(),
+                format!(
+                    "Expected #{:?} to return a string: {:?}",
+                    Self::SELMA_HANDLE_TEXT,
+                    rb_result.err().unwrap()
+                ),
+            ));
+        }
 
-                match rb_result {
-                    Err(_) => {}
-                    Ok(returned_string) => {
-                        // do the replace iff the incoming and outgoing strings are not equal
-                        text.replace(&returned_string, ContentType::Text)
-                    }
-                }
-            }
-        });
+        let new_content: String = rb_result.unwrap();
+        text.replace(&new_content, ContentType::Text);
+
+        Ok(())
     }
 }
 
-pub fn init(m_selma: RModule) -> Result<(), Error> {
+pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
     let c_rewriter = m_selma
         .define_class("Rewriter", Default::default())
         .expect("cannot find class Selma::Rewriter");

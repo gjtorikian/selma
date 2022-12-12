@@ -8,12 +8,9 @@
         "type": "lldb",
         "request": "launch",
         "name": "Debug",
-        "preLaunchTask": {
-          "task": "compile:debug",
-          "type": "rake"
-        },
+        "preLaunchTask": "rake: compile:debug",
         "program": "~/.rbenv/versions/3.1.1/bin/ruby",
-        "args": ["-Ilib", "test/test_helper.rb"],
+        "args": ["-Itest", "test/selma_maliciousness_test.rb"],
         "cwd": "${workspaceFolder}",
         "sourceLanguages": ["rust"]
       }

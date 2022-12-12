@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "rake: compile:debug",
+			"type": "shell",
+			"command": "bin/rake compile:debug",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		}
+	]
+}

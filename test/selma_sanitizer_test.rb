@@ -34,7 +34,7 @@ module Selma
       sanitizer = Selma::Sanitizer.new(hash)
       html = "<a href='https://google.com'>wow!</a>"
       result = Selma::Rewriter.new(sanitizer: sanitizer).rewrite(html)
-      assert_equal("<a href='https://google.com'>wow!</a>", result)
+      assert_equal("<a href=\"https://google.com\">wow!</a>", result)
     end
 
     def test_it_can_be_turned_off

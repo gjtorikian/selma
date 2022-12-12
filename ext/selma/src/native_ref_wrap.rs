@@ -35,7 +35,7 @@ pub struct NativeRefWrap<R> {
 }
 
 impl<R> NativeRefWrap<R> {
-    pub fn wrap<I>(inner: &mut I) -> (Self, Anchor) {
+    pub fn wrap<I>(inner: &I) -> (Self, Anchor) {
         let wrap = NativeRefWrap {
             inner_ptr: unsafe { mem::transmute(inner) },
             poisoned: Rc::new(Cell::new(false)),
@@ -46,15 +46,18 @@ impl<R> NativeRefWrap<R> {
         (wrap, anchor)
     }
 
-    fn assert_not_poisoned(&self) -> Result<(), &'static str> {
-        // if self.poisoned.get() {
-        //     Err("The object has been freed and can't be used anymore.")
-        // } else {
-        Ok(())
-        // }
+    pub fn wrap_mut<I>(inner: &mut I) -> (Self, Anchor) {
+        let wrap = NativeRefWrap {
+            inner_ptr: unsafe { mem::transmute(inner) },
+            poisoned: Rc::new(Cell::new(false)),
+        };
+
+        let anchor = Anchor::new(Rc::clone(&wrap.poisoned));
+
+        (wrap, anchor)
     }
 
-    pub fn get(&self) -> Result<&R, &'static str> {
+    pub fn get_ref(&self) -> Result<&R, &'static str> {
         self.assert_not_poisoned()?;
 
         Ok(unsafe { self.inner_ptr.as_ref() }.unwrap())
@@ -64,5 +67,14 @@ impl<R> NativeRefWrap<R> {
         self.assert_not_poisoned()?;
 
         Ok(unsafe { self.inner_ptr.as_mut() }.unwrap())
+    }
+
+    fn assert_not_poisoned(&self) -> Result<(), &'static str> {
+        // FIXME:
+        // if self.poisoned.get() {
+        //     Err("The object has been freed and can't be used anymore.")
+        // } else {
+        Ok(())
+        // }
     }
 }

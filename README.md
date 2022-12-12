@@ -2,7 +2,7 @@
 
 Selma **sel**ects and **ma**tches HTML nodes using CSS rules. (It can also reject/delete nodes, but then the name isn't as cool.)
 
-![Principal Skinner asking Selma after their date: 'Isn't it nice we hate the same things?'](https://s11.favim.com/orig/7/776/7763/77638/selma-bouvier-patty-bouvier-seymour-skinner-Favim.com-7763869.jpg)
+![Principal Skinner asking Selma after their date: 'Isn't it nice we hate the same things?'](https://user-images.githubusercontent.com/64050/207155384-14e8bd40-780c-466f-bfff-31a8a8fc3d25.jpg)
 
 ## Installation
 

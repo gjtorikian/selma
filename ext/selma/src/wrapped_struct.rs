@@ -29,6 +29,11 @@ impl<T: TypedData> WrappedStruct<T> {
         self.inner.try_convert()
     }
 
+    /// Gets the underlying struct with a `'static` lifetime.
+    pub fn get_static(&self) -> Result<&'static T, Error> {
+        self.inner.try_convert()
+    }
+
     /// Get the Ruby [`Value`] for this struct.
     pub fn to_value(self) -> Value {
         self.inner.into()

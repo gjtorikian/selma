@@ -1,6 +1,10 @@
-use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
+use std::{
+    borrow::{BorrowMut, Cow},
+    cell::RefMut,
+    collections::HashMap,
+};
 
-use html_escape::encode_unquoted_attribute;
+use html_escape::decode_html_entities;
 use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
 use magnus::{
     class, exception, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule,
@@ -229,41 +233,38 @@ impl SelmaSanitizer {
             }
 
             if !attr_val.is_empty() {
-                // first, unescape any encodings and trim leading spaces
-                let encoded_attribute = encode_unquoted_attribute(&attr_val);
-                let unescaped = encoded_attribute.trim_start();
+                // first, trim leading spaces and unescape any encodings
+                let trimmed = attr_val.trim_start();
+                let x = escapist::unescape_html(trimmed.as_bytes());
+                let unescaped_attr_val = String::from_utf8_lossy(&x).to_string();
 
-                // TODO: ???
-                // element.set_attribute(attr_name, unescaped);
+                // element.set_attribute(attr_name, &decoded_attribute);
 
                 if !Self::should_keep_attribute(
                     &binding,
                     element,
                     element_sanitizer,
                     attr_name,
-                    attr_val,
+                    &unescaped_attr_val,
                 ) {
                     element.remove_attribute(attr_name);
                 } else {
                     // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
                     // since output is always UTF-8.
                     if Tag::is_meta(tag) {
-                        if attr_name == "charset" && unescaped != "utf-8" {
+                        if attr_name == "charset" && unescaped_attr_val != "utf-8" {
                             element.set_attribute(attr_name, "utf-8");
                         }
                     } else {
-                        // TODO: check if this is needed
-                        // ...then, encode any special characters, for security
-                        // if attr_name == "href" {
-                        // hrefs have different escaping rules, apparently
-                        // unescaped = encode_unquoted_attribute(unescaped);
-                        // houdini_escape_href(escaped_attr_value, unescaped, strlen(unescaped));
-                        // } else {
-                        // houdini_escape_html(escaped_attr_value, unescaped, strlen(unescaped));
-                        // }
-                        // escaped = utstring_body(escaped_attr_value);
+                        let mut buf = String::new();
+                        // ...then, escape any special characters, for security
+                        if attr_name == "href" { // FIXME: gross--------------vvvv
+                            escapist::escape_href(&mut buf, unescaped_attr_val.to_string().as_str());
+                        } else {
+                            escapist::escape_html(&mut buf, unescaped_attr_val.to_string().as_str());
+                        };
 
-                        // element.set_attribute(attr_name, unescaped);
+                        element.set_attribute(attr_name, &buf);
                     }
                 }
             } else {
@@ -328,27 +329,31 @@ impl SelmaSanitizer {
     }
 
     fn has_allowed_protocol(protocols_allowed: &Vec<String>, attr_val: &String) -> bool {
-        let mut protocol = String::new();
-        for c in attr_val.chars() {
-            match c {
-                ':' => break,
-                '/' => break,
-                '#' => break,
-                _ => {
-                    protocol.push(c);
-                }
+        // FIXME: is there a more idiomatic way to do this?
+        let mut pos: usize = 0;
+        let mut chars = attr_val.chars();
+        let len = attr_val.len();
+
+        for (i, c) in attr_val.chars().enumerate() {
+            if c != ':' && c != '/' && c != '#' && pos + 1 < len {
+                pos = i + 1;
+            } else {
+                break;
             }
         }
 
-        if protocol == "/" {
+        let char = chars.nth(pos).unwrap();
+
+        if char == '/' {
             return protocols_allowed.contains(&"/".to_string());
         }
 
-        if protocol == "#" {
+        if char == '#' {
             return protocols_allowed.contains(&"#".to_string());
         }
 
         // Allow protocol name to be case-insensitive
+        let protocol = attr_val[0..pos].to_lowercase();
         protocols_allowed.contains(&protocol.to_lowercase())
     }
 
