@@ -4,12 +4,10 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+enum-iterator = "1.2"
+escapist = "0.0.1"
 magnus = "0.4"
 lol_html = { git = "https://github.com/cloudflare/lol-html", rev = "b09b7afbbcecb944f4bf338b0e669c430d91061e" }
-html-escape = "0.2"
-enum-iterator = "1.2"
-log = "0.4"
-escapist = "0.0.1"
 
 [lib]
 name = "selma"

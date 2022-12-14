@@ -5,8 +5,9 @@ require "selma/sanitizer/config"
 module Selma
   class Sanitizer
     ALLOW = 1 << 0
-    REMOVE_CONTENTS = (1 << 1)
-    WRAP_WHITESPACE = (1 << 2)
+    ESCAPE_TAGFILTER = (1 << 1)
+    REMOVE_CONTENTS = (1 << 2)
+    WRAP_WHITESPACE = (1 << 3)
 
     # initialize is in Rust, this just helps manage config setup in Ruby
     # TODO: could this just become initialize?
@@ -27,6 +28,7 @@ module Selma
 
       wrap_with_whitespace(config[:whitespace_elements]) if config.include?(:whitespace_elements)
 
+      set_escape_tagfilter(config.fetch(:escape_tagfilter, true))
       set_allow_comments(config.fetch(:allow_comments, false))
       set_allow_doctype(config.fetch(:allow_doctype, true))
     end

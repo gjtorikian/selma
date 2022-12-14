@@ -20,7 +20,7 @@ module Selma
           "a" => { "href" => ["ftp", "http", "https", "mailto", :relative] },
           "blockquote" => { "cite" => ["http", "https", :relative] },
           "q" => { "cite" => ["http", "https", :relative] },
-        }
+        },
       )
     end
   end

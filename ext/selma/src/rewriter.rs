@@ -1,16 +1,24 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{
+    borrow::{BorrowMut, Cow},
+    cell::RefCell,
+    rc::Rc,
+};
 
 use lol_html::{
     doc_comments, doctype, element,
     html_content::{ContentType, Element, EndTag, TextChunk},
-    text, ElementContentHandlers, HtmlRewriter, Selector, Settings,
+    text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
-use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
+use magnus::{
+    define_module, exception, function, memoize, method, scan_args, ExceptionClass, Module, Object,
+    RArray, RModule, Value,
+};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
     sanitizer::SelmaSanitizer,
     selector::SelmaSelector,
+    tags::Tag,
     wrapped_struct::WrappedStruct,
 };
 
@@ -163,76 +171,105 @@ impl SelmaRewriter {
         let sanitized_html = match &self.0.borrow().sanitizer {
             None => html,
             Some(sanitizer) => {
-                let first_pass_html = Self::perform_initial_sanitization(sanitizer, &html).unwrap();
+                // let first_pass_html = Self::perform_initial_sanitization(sanitizer, &html).unwrap();
 
                 // due to malicious html crafting
                 // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
                 // we need to run sanitization several times to truly remove unwanted tags,
                 // because lol-html happily accepts this garbage (by design?)
-                let final_html =
-                    Self::perform_final_sanitization(sanitizer, &first_pass_html).unwrap();
+                let sanitized_html = Self::perform_sanitization(sanitizer, &html).unwrap();
 
-                String::from_utf8(final_html).unwrap()
+                String::from_utf8(sanitized_html).unwrap()
             }
         };
         let binding = self.0.borrow_mut();
         let handlers = &binding.handlers;
 
-        let rewritten_html = Self::perform_handler_rewrite(self, handlers, sanitized_html).unwrap();
-        Ok(String::from_utf8(rewritten_html).unwrap())
+        match Self::perform_handler_rewrite(self, handlers, sanitized_html) {
+            Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
+            Err(err) => Err(magnus::Error::new(
+                exception::runtime_error(),
+                format!("{}", err),
+            )),
+        }
     }
 
-    fn perform_initial_sanitization(
+    fn perform_sanitization(
         sanitizer: &SelmaSanitizer,
         html: &String,
     ) -> Result<Vec<u8>, magnus::Error> {
-        let mut output = vec![];
+        let mut first_pass_html = vec![];
         {
+            let mut document_content_handlers: Vec<DocumentContentHandlers> = vec![];
+            if !sanitizer.get_allow_doctype() {
+                document_content_handlers.push(doctype!(|d| {
+                    sanitizer.remove_doctype(d);
+                    Ok(())
+                }));
+            }
+            if !sanitizer.get_allow_comments() {
+                document_content_handlers.push(doc_comments!(|c| {
+                    sanitizer.remove_comment(c);
+                    Ok(())
+                }));
+            }
             let mut rewriter = HtmlRewriter::new(
                 Settings {
-                    document_content_handlers: vec![
-                        doctype!(|d| {
-                            sanitizer.sanitize_doctype(d);
-                            Ok(())
-                        }),
-                        doc_comments!(|c| {
-                            sanitizer.sanitize_comment(c);
-                            Ok(())
-                        }),
-                    ],
+                    document_content_handlers,
                     element_content_handlers: vec![element!("*", |el| {
                         sanitizer.try_remove_element(el);
-
-                        Ok(())
-                    })],
-                    ..Settings::default()
-                },
-                |c: &[u8]| output.extend_from_slice(c),
-            );
-            rewriter.write(html.as_bytes()).unwrap();
-        }
-        Ok(output)
-    }
-
-    fn perform_final_sanitization(
-        sanitizer: &SelmaSanitizer,
-        html: &[u8],
-    ) -> Result<Vec<u8>, magnus::Error> {
-        let mut output = vec![];
-        {
-            let mut rewriter = HtmlRewriter::new(
-                Settings {
-                    element_content_handlers: vec![element!("*", |el| {
+                        if el.removed() {
+                            return Ok(());
+                        }
                         sanitizer.sanitize_attributes(el);
 
                         Ok(())
                     })],
                     ..Settings::default()
                 },
+                |c: &[u8]| first_pass_html.extend_from_slice(c),
+            );
+
+            let result = rewriter.write(html.as_bytes());
+            if result.is_err() {
+                return Err(magnus::Error::new(
+                    exception::runtime_error(),
+                    format!("Failed to sanitize HTML: {}", result.unwrap_err()),
+                ));
+            }
+        }
+
+        let mut output = vec![];
+        {
+            let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
+            if sanitizer.get_escape_tagfilter() {
+                element_content_handlers.push(element!(Tag::ESCAPEWORTHY_TAGS_CSS, |el| {
+                    let should_remove = sanitizer.allow_element(el);
+                    if should_remove {
+                        sanitizer.force_remove_element(el);
+                    }
+
+                    Ok(())
+                }));
+            }
+
+            let mut rewriter = HtmlRewriter::new(
+                Settings {
+                    element_content_handlers,
+                    ..Settings::default()
+                },
                 |c: &[u8]| output.extend_from_slice(c),
             );
-            rewriter.write(html).unwrap();
+
+            let result = rewriter.write(first_pass_html.as_slice());
+            if result.is_err() {
+                return Err(magnus::Error::new(
+                    exception::runtime_error(),
+                    format!("Failed to sanitize HTML: {}", result.unwrap_err()),
+                ));
+            }
         }
+
         Ok(output)
     }
 
@@ -241,7 +278,7 @@ impl SelmaRewriter {
         handlers: &Vec<Handler>,
         html: String,
     ) -> Result<Vec<u8>, magnus::Error> {
-        // TODO: this should ideally be done ahead of time, not on every call
+        // TODO: this should ideally be done ahead of time, not on every `#rewrite` call
         let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
 
         handlers.iter().for_each(|handler| {
@@ -251,19 +288,31 @@ impl SelmaRewriter {
 
             // TODO: test final raise by simulating errors
             if selector.match_element().is_some() {
-                element_content_handlers.push(element!(selector.match_element().unwrap(), |el| {
-                    Self::process_element_handlers(handler.rb_handler, el);
-                    Ok(())
-                }));
+                let closure_element_stack = element_stack.clone();
+
+                element_content_handlers.push(element!(
+                    selector.match_element().unwrap(),
+                    move |el| {
+                        match Self::process_element_handlers(
+                            handler.rb_handler,
+                            el,
+                            &closure_element_stack.borrow(),
+                        ) {
+                            Ok(_) => Ok(()),
+                            Err(err) => Err(err.to_string().into()),
+                        }
+                    }
+                ));
             }
 
             if selector.match_text_within().is_some() {
                 let closure_element_stack = element_stack.clone();
+
                 element_content_handlers.push(text!(
                     selector.match_text_within().unwrap(),
                     move |text| {
                         let element_stack = closure_element_stack.as_ref().borrow();
-                        if selector.ignore_text_within().is_some() && !element_stack.is_empty() {
+                        if selector.ignore_text_within().is_some() {
                             // check if current tag is a tag we should be ignoring text within
                             let head_tag_name = element_stack.last().unwrap().to_string();
                             if selector
@@ -276,37 +325,35 @@ impl SelmaRewriter {
                             }
                         }
 
-                        Self::process_text_handlers(handler.rb_handler, text);
-                        Ok(()) // TODO: handle `process_text_handlers` Result
+                        match Self::process_text_handlers(handler.rb_handler, text) {
+                            Ok(_) => Ok(()),
+                            Err(err) => Err(err.to_string().into()),
+                        }
                     }
                 ));
             }
 
-            // let mut s = element_stack.as_ref().borrow_mut();
-            // let mut closure_element_stack = element_stack.clone();
-            // if we're tracking parent elements to ignore, we need to check
-            // *every* element we iterate over, to create a stack of elements
-            if selector.ignore_text_within().is_some() {
-                element_content_handlers.push(element!("*", move |el| {
-                    // no need to track self-closing tags
-                    if el.is_self_closing() {
-                        return Ok(());
-                    }
-                    let tag_name = el.tag_name();
+            // we need to check *every* element we iterate over, to create a stack of elements
+            element_content_handlers.push(element!("*", move |el| {
+                let tag_name = el.tag_name().to_lowercase();
 
-                    element_stack.as_ref().borrow_mut().push(tag_name);
-                    // element_stack.borrow_mut().push(tag_name);
-                    let closure_element_stack = element_stack.clone();
+                // no need to track self-closing tags
+                if Tag::tag_from_tag_name(&tag_name).self_closing {
+                    return Ok(());
+                };
 
-                    el.on_end_tag(move |_end_tag: &mut EndTag| {
-                        let mut stack = closure_element_stack.as_ref().borrow_mut();
-                        stack.pop();
-                        Ok(())
-                    });
+                element_stack.as_ref().borrow_mut().push(tag_name);
+
+                let closure_element_stack = element_stack.clone();
+                el.on_end_tag(move |_end_tag: &mut EndTag| {
+                    let mut stack = closure_element_stack.as_ref().borrow_mut();
+                    stack.pop();
                     Ok(())
-                }));
-            }
+                });
+                Ok(())
+            }));
         });
+
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
@@ -316,47 +363,57 @@ impl SelmaRewriter {
                 },
                 |c: &[u8]| output.extend_from_slice(c),
             );
-            rewriter.write(html.as_bytes()).unwrap();
+            match rewriter.write(html.as_bytes()) {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(magnus::Error::new(
+                        exception::runtime_error(),
+                        format!("{}", err),
+                    ));
+                }
+            }
         }
         Ok(output)
     }
 
-    fn process_element_handlers(rb_handler: Value, element: &mut Element) {
+    fn process_element_handlers(
+        rb_handler: Value,
+        element: &mut Element,
+        ancestors: &Vec<String>,
+    ) -> Result<(), magnus::Error> {
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
-            element
-                .on_end_tag(move |end_tag| {
-                    let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
+            element.on_end_tag(move |end_tag| {
+                let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
 
-                    rb_handler
-                        .funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,))
-                        .unwrap();
-                    Ok(())
-                })
-                .unwrap();
+                rb_handler
+                    .funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,))
+                    .unwrap();
+                Ok(())
+            });
         }
 
         // prevents missing `handle_element` function
-        let rb_element = SelmaHTMLElement::new(element);
+        let rb_element = SelmaHTMLElement::new(element, ancestors);
         let rb_result =
             rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
         match rb_result {
-            Ok(_) => {}
-            Err(e) => {
-                let classname = unsafe { rb_handler.classname() };
-                log::warn!(
-                    "Could not call #{:?} on {:?}; is it defined?",
-                    Self::SELMA_HANDLE_ELEMENT,
-                    classname
-                );
-                log::warn!("Error: {:?}", e);
-            }
+            Ok(_) => Ok(()),
+            Err(err) => Err(magnus::Error::new(
+                exception::runtime_error(),
+                format!("{}", err.to_string()),
+            )),
         }
     }
 
     fn process_text_handlers(rb_handler: Value, text: &mut TextChunk) -> Result<(), magnus::Error> {
         // prevents missing `handle_text` function
         let content = text.as_str();
+
+        // FIXME: why does this happen?
+        if content.is_empty() {
+            return Ok(());
+        }
         let rb_result = rb_handler.funcall(Self::SELMA_HANDLE_TEXT, (content,));
 
         if rb_result.is_err() {
@@ -371,7 +428,8 @@ impl SelmaRewriter {
         }
 
         let new_content: String = rb_result.unwrap();
-        text.replace(&new_content, ContentType::Text);
+        // TODO: can this be an option?
+        text.replace(&new_content, ContentType::Html);
 
         Ok(())
     }

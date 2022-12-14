@@ -106,7 +106,7 @@ module Selma
         end
 
         def test_should_not_choke_on_valueless_attributes
-          assert_equal("foo <a>foo</a> bar",
+          assert_equal("foo <a href>foo</a> bar",
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <a href>foo</a> bar"))
         end
 

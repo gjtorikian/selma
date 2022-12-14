@@ -231,15 +231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "html-escape"
-version = "0.2.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15315cfa9503e9aa85a477138eff76a1b203a430703548052c330b69d8d8c205"
-dependencies = [
- "utf8-width",
-]
-
-[[package]]
 name = "itoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -511,18 +502,18 @@ dependencies = [
 
 [[package]]
 name = "rb-sys"
-version = "0.9.48"
+version = "0.9.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfc6b8f3bf2d04b0180e243ceeb033b51ca267d839aa1c12fa25f262c17d0596"
+checksum = "fd7ed134416bf89cf123111e31d3c4d496e2b4b05c96e89f4bc7d42d3cc3068c"
 dependencies = [
  "rb-sys-build",
 ]
 
 [[package]]
 name = "rb-sys-build"
-version = "0.9.48"
+version = "0.9.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cd591ebf22c45a44e51192fbeebba473aea0fe2a708b0b24665a13010c58b8d"
+checksum = "3f9cddf9cfd66bac1e447a7d3fd90321d784a9ab415ba46a39e67bf27bc5337f"
 dependencies = [
  "bindgen",
  "regex",
@@ -599,8 +590,6 @@ version = "1.0.0"
 dependencies = [
  "enum-iterator",
  "escapist",
- "html-escape",
- "log",
  "lol_html",
  "magnus",
 ]
@@ -693,12 +682,6 @@ name = "unicode-ident"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ceab39d59e4c9499d4e5a8ee0e2735b891bb7308ac83dfb4e80cad195c9f6f3"
-
-[[package]]
-name = "utf8-width"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
 
 [[package]]
 name = "version_check"

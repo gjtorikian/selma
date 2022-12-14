@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
 };
 
-use html_escape::decode_html_entities;
 use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
 use magnus::{
     class, exception, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule,
@@ -27,7 +26,8 @@ pub struct Sanitizer {
     allowed_attrs: Vec<String>,
     allowed_classes: Vec<String>,
     element_sanitizers: HashMap<String, ElementSanitizer>,
-    name_prefix: String,
+
+    pub escape_tagfilter: bool,
     pub allow_comments: bool,
     pub allow_doctype: bool,
     config: RHash,
@@ -39,8 +39,9 @@ pub struct SelmaSanitizer(std::cell::RefCell<Sanitizer>);
 
 impl SelmaSanitizer {
     const SELMA_SANITIZER_ALLOW: u8 = (1 << 0);
-    const SELMA_SANITIZER_REMOVE_CONTENTS: u8 = (1 << 1);
-    const SELMA_SANITIZER_WRAP_WHITESPACE: u8 = (1 << 2);
+    const SELMA_SANITIZER_ESCAPE_TAGFILTER: u8 = (1 << 1);
+    const SELMA_SANITIZER_REMOVE_CONTENTS: u8 = (1 << 2);
+    const SELMA_SANITIZER_WRAP_WHITESPACE: u8 = (1 << 3);
 
     pub fn new(arguments: &[Value]) -> Result<Self, Error> {
         let args = scan_args::scan_args::<(), (Option<RHash>,), (), (), (), ()>(arguments)?;
@@ -69,20 +70,23 @@ impl SelmaSanitizer {
             allowed_attrs: vec![],
             allowed_classes: vec![],
             element_sanitizers,
-            name_prefix: "".to_string(),
+
+            escape_tagfilter: true,
             allow_comments: false,
-            allow_doctype: false,
+            allow_doctype: true,
             config,
         })))
     }
 
-    fn config(&self) -> RHash {
-        self.0.borrow().config
+    fn get_config(&self) -> Result<RHash, Error> {
+        let binding = self.0.borrow();
+
+        Ok(binding.config)
     }
 
     /// Toggle a sanitizer option on or off.
-    fn set_flag(&self, element: String, flag: u8, set: bool) {
-        let tag = Tag::tag_from_element_name(&element);
+    fn set_flag(&self, tag_name: String, flag: u8, set: bool) {
+        let tag = Tag::tag_from_tag_name(tag_name.as_str());
         if set {
             self.0.borrow_mut().flags[tag.index] |= flag;
         } else {
@@ -103,16 +107,40 @@ impl SelmaSanitizer {
         }
     }
 
+    /// Whether or not to keep dangerous HTML tags.
+    fn set_escape_tagfilter(&self, allow: bool) -> bool {
+        self.0.borrow_mut().escape_tagfilter = allow;
+        allow
+    }
+
+    pub fn escape_tagfilter(&self, e: &mut Element) -> bool {
+        if self.0.borrow().escape_tagfilter {
+            let tag = Tag::tag_from_element(e);
+            if Tag::is_tag_escapeworthy(tag) {
+                e.remove();
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn get_escape_tagfilter(&self) -> bool {
+        self.0.borrow().escape_tagfilter
+    }
+
     /// Whether or not to keep HTML comments.
     fn set_allow_comments(&self, allow: bool) -> bool {
         self.0.borrow_mut().allow_comments = allow;
         allow
     }
 
-    pub fn sanitize_comment(&self, c: &mut Comment) {
-        if !self.0.borrow().allow_comments {
-            c.remove();
-        }
+    pub fn get_allow_comments(&self) -> bool {
+        self.0.borrow().allow_comments
+    }
+
+    pub fn remove_comment(&self, c: &mut Comment) {
+        c.remove();
     }
 
     /// Whether or not to keep HTML doctype.
@@ -121,10 +149,13 @@ impl SelmaSanitizer {
         allow
     }
 
-    pub fn sanitize_doctype(&self, d: &mut Doctype) {
-        if !self.0.borrow().allow_doctype {
-            d.remove();
-        }
+    /// Whether or not to keep HTML doctype.
+    pub fn get_allow_doctype(&self) -> bool {
+        self.0.borrow().allow_doctype
+    }
+
+    pub fn remove_doctype(&self, d: &mut Doctype) {
+        d.remove();
     }
 
     fn set_allowed_attribute(&self, eln: Value, attr_name: String, allow: bool) -> bool {
@@ -203,14 +234,8 @@ impl SelmaSanitizer {
     }
 
     pub fn sanitize_attributes(&self, element: &mut Element) {
-        let keep_element: bool = Self::try_remove_element(self, element);
-
-        if keep_element {
-            return;
-        }
-
         let binding = self.0.borrow_mut();
-        let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
+        let tag = Tag::tag_from_element(element);
         let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
 
         // FIXME: This is a hack to get around the fact that we can't borrow
@@ -225,51 +250,42 @@ impl SelmaSanitizer {
             // an HTML tag to pass malicious data. If this is
             // encountered, remove the entire element to be safe.
             if attr_name.starts_with("<!--") {
-                let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
-                let flags: u8 = binding.flags[tag.index];
-
-                Self::force_remove_element(self, element, tag, flags);
+                Self::force_remove_element(self, element);
                 return;
             }
 
-            if !attr_val.is_empty() {
-                // first, trim leading spaces and unescape any encodings
-                let trimmed = attr_val.trim_start();
-                let x = escapist::unescape_html(trimmed.as_bytes());
-                let unescaped_attr_val = String::from_utf8_lossy(&x).to_string();
+            // first, trim leading spaces and unescape any encodings
+            let trimmed = attr_val.trim_start();
+            let x = escapist::unescape_html(trimmed.as_bytes());
+            let unescaped_attr_val = String::from_utf8_lossy(&x).to_string();
 
-                // element.set_attribute(attr_name, &decoded_attribute);
-
-                if !Self::should_keep_attribute(
-                    &binding,
-                    element,
-                    element_sanitizer,
-                    attr_name,
-                    &unescaped_attr_val,
-                ) {
-                    element.remove_attribute(attr_name);
-                } else {
-                    // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
-                    // since output is always UTF-8.
-                    if Tag::is_meta(tag) {
-                        if attr_name == "charset" && unescaped_attr_val != "utf-8" {
-                            element.set_attribute(attr_name, "utf-8");
-                        }
-                    } else {
-                        let mut buf = String::new();
-                        // ...then, escape any special characters, for security
-                        if attr_name == "href" { // FIXME: gross--------------vvvv
-                            escapist::escape_href(&mut buf, unescaped_attr_val.to_string().as_str());
-                        } else {
-                            escapist::escape_html(&mut buf, unescaped_attr_val.to_string().as_str());
-                        };
-
-                        element.set_attribute(attr_name, &buf);
-                    }
-                }
-            } else {
-                // no value? remove the attribute
+            if !Self::should_keep_attribute(
+                &binding,
+                element,
+                element_sanitizer,
+                attr_name,
+                &unescaped_attr_val,
+            ) {
                 element.remove_attribute(attr_name);
+            } else {
+                // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
+                // since output is always UTF-8.
+                if Tag::is_meta(tag) {
+                    if attr_name == "charset" && unescaped_attr_val != "utf-8" {
+                        element.set_attribute(attr_name, "utf-8");
+                    }
+                } else if !unescaped_attr_val.is_empty() {
+                    let mut buf = String::new();
+                    // ...then, escape any special characters, for security
+                    if attr_name == "href" {
+                        // FIXME: gross--------------vvvv
+                        escapist::escape_href(&mut buf, unescaped_attr_val.to_string().as_str());
+                    } else {
+                        escapist::escape_html(&mut buf, unescaped_attr_val.to_string().as_str());
+                    };
+
+                    element.set_attribute(attr_name, &buf);
+                }
             }
         }
 
@@ -292,9 +308,15 @@ impl SelmaSanitizer {
         attr_name: &String,
         attr_val: &String,
     ) -> bool {
-        let mut allowed = element_sanitizer.allowed_attrs.contains(attr_name);
+        let mut allowed: bool = false;
+        let element_allowed_attrs = element_sanitizer.allowed_attrs.contains(attr_name);
+        let sanitizer_allowed_attrs = binding.allowed_attrs.contains(attr_name);
 
-        if !allowed && binding.allowed_attrs.contains(attr_name) {
+        if element_allowed_attrs {
+            allowed = true;
+        }
+
+        if !allowed && sanitizer_allowed_attrs {
             allowed = true;
         }
 
@@ -304,9 +326,16 @@ impl SelmaSanitizer {
 
         let protocol_sanitizer_values = element_sanitizer.protocol_sanitizers.get(attr_name);
         match protocol_sanitizer_values {
-            None => {}
+            None => {
+                // has a protocol, but no sanitization list
+                if !attr_val.is_empty() && Self::has_protocol(attr_val) {
+                    return false;
+                }
+            }
             Some(protocol_sanitizer_values) => {
-                if !Self::has_allowed_protocol(protocol_sanitizer_values, attr_val) {
+                if !attr_val.is_empty()
+                    && !Self::has_allowed_protocol(protocol_sanitizer_values, attr_val)
+                {
                     return false;
                 }
             }
@@ -326,6 +355,10 @@ impl SelmaSanitizer {
         }
 
         true
+    }
+
+    fn has_protocol(attr_val: &String) -> bool {
+        attr_val.contains("://")
     }
 
     fn has_allowed_protocol(protocols_allowed: &Vec<String>, attr_val: &String) -> bool {
@@ -354,6 +387,7 @@ impl SelmaSanitizer {
 
         // Allow protocol name to be case-insensitive
         let protocol = attr_val[0..pos].to_lowercase();
+
         protocols_allowed.contains(&protocol.to_lowercase())
     }
 
@@ -398,17 +432,28 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn try_remove_element(&self, element: &mut Element) -> bool {
-        let tag = Tag::tag_from_element_name(&element.tag_name().to_lowercase());
+    pub fn allow_element(&self, element: &mut Element) -> bool {
+        let tag = Tag::tag_from_element(element);
         let flags: u8 = self.0.borrow().flags[tag.index];
 
-        let should_remove: bool = (flags & Self::SELMA_SANITIZER_ALLOW) == 0;
+        (flags & Self::SELMA_SANITIZER_ALLOW) == 0
+    }
+
+    pub fn try_remove_element(&self, element: &mut Element) -> bool {
+        let tag = Tag::tag_from_element(element);
+        let flags: u8 = self.0.borrow().flags[tag.index];
+
+        let should_remove = !element.removed() && self.allow_element(element);
 
         if should_remove {
             if Tag::has_text_content(tag) {
-                Self::remove_element(element, tag, Self::SELMA_SANITIZER_REMOVE_CONTENTS);
+                Self::remove_element(
+                    element,
+                    tag.self_closing,
+                    Self::SELMA_SANITIZER_REMOVE_CONTENTS,
+                );
             } else {
-                Self::remove_element(element, tag, flags);
+                Self::remove_element(element, tag.self_closing, flags);
             }
 
             Self::check_if_end_tag_needs_removal(element);
@@ -426,7 +471,7 @@ impl SelmaSanitizer {
         should_remove
     }
 
-    fn remove_element(element: &mut Element, tag: Tag, flags: u8) {
+    fn remove_element(element: &mut Element, self_closing: bool, flags: u8) {
         let wrap_whitespace = (flags & Self::SELMA_SANITIZER_WRAP_WHITESPACE) != 0;
         let remove_contents = (flags & Self::SELMA_SANITIZER_REMOVE_CONTENTS) != 0;
 
@@ -434,7 +479,7 @@ impl SelmaSanitizer {
             element.remove();
         } else {
             if wrap_whitespace {
-                if tag.self_closing {
+                if self_closing {
                     element.after(" ", ContentType::Text);
                 } else {
                     element.before(" ", ContentType::Text);
@@ -445,15 +490,15 @@ impl SelmaSanitizer {
         }
     }
 
-    fn force_remove_element(&self, element: &mut Element, tag: Tag, flags: u8) {
-        Self::remove_element(element, tag, flags);
+    pub fn force_remove_element(&self, element: &mut Element) {
+        let tag = Tag::tag_from_element(element);
+        let self_closing = tag.self_closing;
+        Self::remove_element(element, self_closing, Self::SELMA_SANITIZER_REMOVE_CONTENTS);
         Self::check_if_end_tag_needs_removal(element);
     }
 
     fn check_if_end_tag_needs_removal(element: &mut Element) {
-        if element.removed()
-            && !Tag::tag_from_element_name(&element.tag_name().to_lowercase()).self_closing
-        {
+        if element.removed() && !Tag::tag_from_element(element).self_closing {
             element
                 .on_end_tag(move |end| {
                     Self::remove_end_tag(end);
@@ -486,18 +531,36 @@ pub fn init(m_selma: RModule) -> Result<(), Error> {
     let c_sanitizer = m_selma.define_class("Sanitizer", Default::default())?;
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
-    c_sanitizer.define_method("config", method!(SelmaSanitizer::config, 0))?;
+    c_sanitizer.define_method("config", method!(SelmaSanitizer::get_config, 0))?;
 
     c_sanitizer.define_method("set_flag", method!(SelmaSanitizer::set_flag, 3))?;
     c_sanitizer.define_method("set_all_flags", method!(SelmaSanitizer::set_all_flags, 2))?;
+
+    c_sanitizer.define_method(
+        "set_escape_tagfilter",
+        method!(SelmaSanitizer::set_escape_tagfilter, 1),
+    )?;
+    c_sanitizer.define_method(
+        "escape_tagfilter",
+        method!(SelmaSanitizer::get_escape_tagfilter, 0),
+    )?;
 
     c_sanitizer.define_method(
         "set_allow_comments",
         method!(SelmaSanitizer::set_allow_comments, 1),
     )?;
     c_sanitizer.define_method(
+        "allow_comments",
+        method!(SelmaSanitizer::get_allow_comments, 0),
+    )?;
+
+    c_sanitizer.define_method(
         "set_allow_doctype",
         method!(SelmaSanitizer::set_allow_doctype, 1),
+    )?;
+    c_sanitizer.define_method(
+        "allow_doctype",
+        method!(SelmaSanitizer::get_allow_doctype, 0),
     )?;
 
     c_sanitizer.define_method(

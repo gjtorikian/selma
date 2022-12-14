@@ -43,8 +43,9 @@ class SelmaMaliciousnessTest < Minitest::Test
 
   def test_that_it_does_hate_missing_match_text_within
     frag = "<strong>Wow!</strong>"
-    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [NoHandleText.new]).rewrite(frag)
-    assert_equal(frag, modified_doc)
+    assert_raises(RuntimeError) do
+      Selma::Rewriter.new(sanitizer: nil, handlers: [NoHandleText.new]).rewrite(frag)
+    end
   end
 
   def test_that_it_does_hate_nil_sanitizer_and_handlers
