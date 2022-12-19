@@ -12,5 +12,6 @@ pub fn init(m_selma: RModule) -> Result<(), Error> {
 
     Ok(())
 }
+
 pub mod element;
 pub mod end_tag;

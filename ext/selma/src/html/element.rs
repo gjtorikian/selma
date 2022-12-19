@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
 use crate::native_ref_wrap::NativeRefWrap;
-use lol_html::html_content::{ContentType, Element};
-use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Symbol};
+use lol_html::html_content::Element;
+use magnus::{exception, method, Error, Module, RClass};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,

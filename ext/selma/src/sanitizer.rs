@@ -1,8 +1,4 @@
-use std::{
-    borrow::{BorrowMut, Cow},
-    cell::RefMut,
-    collections::HashMap,
-};
+use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
 
 use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
 use magnus::{
@@ -357,11 +353,11 @@ impl SelmaSanitizer {
         true
     }
 
-    fn has_protocol(attr_val: &String) -> bool {
+    fn has_protocol(attr_val: &str) -> bool {
         attr_val.contains("://")
     }
 
-    fn has_allowed_protocol(protocols_allowed: &Vec<String>, attr_val: &String) -> bool {
+    fn has_allowed_protocol(protocols_allowed: &[String], attr_val: &String) -> bool {
         // FIXME: is there a more idiomatic way to do this?
         let mut pos: usize = 0;
         let mut chars = attr_val.chars();

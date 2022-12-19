@@ -1,18 +1,11 @@
-use std::{
-    borrow::{BorrowMut, Cow},
-    cell::RefCell,
-    rc::Rc,
-};
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 use lol_html::{
     doc_comments, doctype, element,
     html_content::{ContentType, Element, EndTag, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
-use magnus::{
-    define_module, exception, function, memoize, method, scan_args, ExceptionClass, Module, Object,
-    RArray, RModule, Value,
-};
+use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
@@ -275,7 +268,7 @@ impl SelmaRewriter {
 
     pub fn perform_handler_rewrite(
         &self,
-        handlers: &Vec<Handler>,
+        handlers: &[Handler],
         html: String,
     ) -> Result<Vec<u8>, magnus::Error> {
         // TODO: this should ideally be done ahead of time, not on every `#rewrite` call
@@ -393,7 +386,6 @@ impl SelmaRewriter {
             });
         }
 
-        // prevents missing `handle_element` function
         let rb_element = SelmaHTMLElement::new(element, ancestors);
         let rb_result =
             rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
@@ -401,7 +393,7 @@ impl SelmaRewriter {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),
-                format!("{}", err.to_string()),
+                format!("{}", err),
             )),
         }
     }
