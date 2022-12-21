@@ -40,17 +40,9 @@ jobs:
           git tag -a v${{ steps.version-label.outputs.version }} -m "Release v${{ steps.version-label.outputs.version }}"
           git push origin --tags
 
-      # - name: Generate CHANGELOG.md
-      #   id: changelog
-      #   run: script/generate_changelog
-
-      # - name: Commit & Push Changelog
-      #   run: |
-      #     git config --local user.email "actions@github.com"
-      #     git config --local user.name "Actions Auto Build"
-      #     git add -f CHANGELOG.md
-      #     git commit -m "docs: update changelog" || true
-      #     git push
+      - name: Generate CHANGELOG.md
+        id: changelog
+        run: script/generate_changelog
 
       - name: Publish release
         env:
