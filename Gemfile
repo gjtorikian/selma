@@ -5,6 +5,8 @@ source "https://rubygems.org"
 # Specified gem's dependencies in selma.gemspec
 gemspec
 
+gem "github_changelog_generator", "~> 1.16"
+
 group :debug do
   gem "amazing_print"
   gem "debug"
@@ -30,4 +32,4 @@ group :benchmark do
   gem "sanitize", "~> 6.0"
 end
 
-gem "ruby-lsp", "~> 0.3.5", :group => :development
+gem "ruby-lsp", "~> 0.3.5", group: :development
