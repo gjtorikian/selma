@@ -17,11 +17,11 @@ impl<'r> Anchor<'r> {
     }
 }
 
-impl Drop for Anchor<'_> {
-    fn drop(&mut self) {
-        self.poisoned.replace(true);
-    }
-}
+// impl Drop for Anchor<'_> {
+//     fn drop(&mut self) {
+//         self.poisoned.replace(true);
+//     }
+// }
 
 // NOTE: wasm_bindgen doesn't allow structures with lifetimes. To workaround that
 // we create a wrapper that erases all the lifetime information from the inner reference
@@ -57,7 +57,7 @@ impl<R> NativeRefWrap<R> {
         (wrap, anchor)
     }
 
-    pub fn get_ref(&self) -> Result<&R, &'static str> {
+    pub fn get(&self) -> Result<&R, &'static str> {
         self.assert_not_poisoned()?;
 
         Ok(unsafe { self.inner_ptr.as_ref() }.unwrap())
@@ -70,11 +70,10 @@ impl<R> NativeRefWrap<R> {
     }
 
     fn assert_not_poisoned(&self) -> Result<(), &'static str> {
-        // FIXME:
-        // if self.poisoned.get() {
-        //     Err("The object has been freed and can't be used anymore.")
-        // } else {
-        Ok(())
-        // }
+        if self.poisoned.get() {
+            Err("The object has been freed and can't be used anymore.")
+        } else {
+            Ok(())
+        }
     }
 }

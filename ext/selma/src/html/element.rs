@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use crate::native_ref_wrap::NativeRefWrap;
-use lol_html::html_content::Element;
-use magnus::{exception, method, Error, Module, RClass};
+use lol_html::html_content::{ContentType, Element};
+use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Symbol};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,
@@ -14,44 +16,49 @@ pub struct SelmaHTMLElement(std::cell::RefCell<HTMLElement>);
 unsafe impl Send for SelmaHTMLElement {}
 
 impl SelmaHTMLElement {
-    pub fn new(element: &mut Element, ancestors: &Vec<String>) -> Self {
+    pub fn new(element: &mut Element, ancestors: &[String]) -> Self {
         let (ref_wrap, _anchor) = NativeRefWrap::wrap_mut(element);
 
         Self(std::cell::RefCell::new(HTMLElement {
             element: ref_wrap,
-            ancestors: ancestors.clone(),
+            ancestors: ancestors.to_owned(),
         }))
     }
 
     fn tag_name(&self) -> Result<String, Error> {
-        let mut binding = self.0.borrow();
+        let binding = self.0.borrow();
 
-        if let Ok(e) = binding.element.get_ref() {
+        if let Ok(e) = binding.element.get() {
             Ok(e.tag_name())
         } else {
             Err(Error::new(
                 exception::runtime_error(),
-                "Element `tag_name` is not available",
+                "`tag_name` is not available",
             ))
         }
     }
 
     fn get_attribute(&self, attr: String) -> Option<String> {
         let binding = self.0.borrow();
-        let element = binding.element.get_ref();
+        let element = binding.element.get();
         element.unwrap().get_attribute(&attr)
     }
 
     fn set_attribute(&self, attr: String, value: String) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
-        let element = binding.element.get_mut().unwrap();
-
-        match element.set_attribute(&attr, &value) {
-            Ok(_) => Ok(value),
-            Err(err) => Err(Error::new(
+        if let Ok(element) = binding.element.get_mut() {
+            match element.set_attribute(&attr, &value) {
+                Ok(_) => Ok(value),
+                Err(err) => Err(Error::new(
+                    exception::runtime_error(),
+                    format!("AttributeNameError: {}", err),
+                )),
+            }
+        } else {
+            Err(Error::new(
                 exception::runtime_error(),
-                format!("AttributeNameError: {}", err),
-            )),
+                "`tag_name` is not available",
+            ))
         }
     }
 
@@ -67,7 +74,7 @@ impl SelmaHTMLElement {
         let binding = self.0.borrow();
         let hash = RHash::new();
 
-        if let Ok(e) = binding.element.get_ref() {
+        if let Ok(e) = binding.element.get() {
             e.attributes()
                 .iter()
                 .for_each(|attr| match hash.aset(attr.name(), attr.value()) {
