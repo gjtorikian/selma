@@ -3,10 +3,6 @@
 require "test_helper"
 
 class SelmaRewriterMatchElementTest < Minitest::Test
-  def test_that_it_has_a_version_number
-    refute_nil(::Selma::VERSION)
-  end
-
   class Handler
     SELECTOR = Selma::Selector.new(match_element: "strong")
 

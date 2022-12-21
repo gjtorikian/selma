@@ -20,7 +20,7 @@ module Selma
       # Returns a new Hash containing the result of deeply merging *other_config*
       # into *config*. Does not modify *config* or *other_config*.
       #
-      # This is the safest way to use a built-in Sanitize config as the basis for
+      # This is the safest way to use a built-in config as the basis for
       # your own custom config.
       def self.merge(config, other_config = {})
         raise ArgumentError, "config must be a Hash" unless config.is_a?(Hash)
