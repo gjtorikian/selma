@@ -18,8 +18,9 @@ module Selma
       end
 
       def test_blocks_invalid_doctypes_in_documents
-        skip
+        skip("non-essential feature")
         @sanitizer = Selma::Sanitizer.new({ allow_doctype: true, elements: ["html"] })
+
         assert_equal("<!DOCTYPE html><html>foo</html>",
           Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<!DOCTYPE blah blah blah><html>foo</html>"))
         assert_equal("<!DOCTYPE html><html>foo</html>",
@@ -47,7 +48,8 @@ module Selma
         end
 
         def test_blocks_invalid_doctypes_in_documents
-          skip
+          skip("non-essential feature")
+
           assert_equal("<!DOCTYPE html><html>foo</html>",
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<!DOCTYPE blah blah blah><html>foo</html>"
                 .rewrite(sanitizer: @sanitizer)))

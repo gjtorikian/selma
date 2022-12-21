@@ -30,6 +30,7 @@ class SelmaMaliciousnessTest < Minitest::Test
   def test_that_it_does_not_hate_missing_handle_element
     frag = "<span>Wow!</span>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [NoHandleElement.new]).rewrite(frag)
+
     assert_equal(frag, modified_doc)
   end
 

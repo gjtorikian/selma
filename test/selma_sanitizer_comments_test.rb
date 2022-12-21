@@ -28,6 +28,7 @@ module Selma
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<script><!-- comment --></script>"))
 
           sanitizer = Selma::Sanitizer.new({ allow_comments: false, elements: ["script"] })
+
           assert_equal("<script><!-- comment --></script>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite("<script><!-- comment --></script>"))
         end
       end
@@ -52,6 +53,7 @@ module Selma
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <div <!-- comment -->>bar</div>"))
 
           sanitizer = Selma::Sanitizer.new({ allow_comments: true, elements: ["script"] })
+
           assert_equal("<script><!-- comment --></script>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite("<script><!-- comment --></script>"))
         end
       end

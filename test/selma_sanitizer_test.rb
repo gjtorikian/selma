@@ -7,6 +7,7 @@ module Selma
     def test_it_sanitizes_by_default
       html = "<a href='https://google.com'>here is a neat site!</a>"
       rewritten = Selma::Rewriter.new.rewrite(html)
+
       assert_equal("here is a neat site!", rewritten)
     end
 
@@ -15,6 +16,7 @@ module Selma
         elements: ["a"],
       }
       sanitizer = Selma::Sanitizer.new(hash)
+
       assert_equal(["a"], sanitizer.elements)
     end
 
@@ -34,6 +36,7 @@ module Selma
       sanitizer = Selma::Sanitizer.new(hash)
       html = "<a href='https://google.com'>wow!</a>"
       result = Selma::Rewriter.new(sanitizer: sanitizer).rewrite(html)
+
       assert_equal("<a href=\"https://google.com\">wow!</a>", result)
     end
 
@@ -57,6 +60,7 @@ module Selma
       def test_should_not_modify_the_input_string
         input = "<!DOCTYPE html><b>foo</b>"
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<!DOCTYPE html><b>foo</b>")
+
         assert_equal("<!DOCTYPE html><b>foo</b>", input)
       end
 
@@ -66,22 +70,27 @@ module Selma
       end
 
       def test_should_normalize_newlines
-        skip
+        skip("non-essential feature")
+
         assert_equal("a\n\n\n\n\nz",
           Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a\r\n\n\r\r\r\nz"))
       end
 
       def test_should_strip_control_characters_except_ascii_whitespace
-        skip
+        skip("non-essential feature")
+
         sample_control_chars = "\u0001\u0008\u000b\u000e\u001f\u007f\u009f"
         whitespace = "\t\n\f\u0020"
+
         assert_equal("<!DOCTYPE html><html>a#{whitespace}z</html>",
           Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a#{sample_control_chars}#{whitespace}z"))
       end
 
       def test_should_strip_non_characters
-        skip
+        skip("non-essential feature")
+
         sample_non_chars = "\ufdd0\ufdef\ufffe\uffff\u{1fffe}\u{1ffff}\u{2fffe}\u{2ffff}\u{3fffe}\u{3ffff}\u{4fffe}\u{4ffff}\u{5fffe}\u{5ffff}\u{6fffe}\u{6ffff}\u{7fffe}\u{7ffff}\u{8fffe}\u{8ffff}\u{9fffe}\u{9ffff}\u{afffe}\u{affff}\u{bfffe}\u{bffff}\u{cfffe}\u{cffff}\u{dfffe}\u{dffff}\u{efffe}\u{effff}\u{ffffe}\u{fffff}\u{10fffe}\u{10ffff}"
+
         assert_equal("<!DOCTYPE html><html>az</html>",
           Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a#{sample_non_chars}z"))
       end
@@ -100,6 +109,7 @@ module Selma
       def test_should_not_modify_the_input_string
         input = "<b>foo</b>"
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<b>foo</b>")
+
         assert_equal("<b>foo</b>", input)
       end
 
@@ -116,13 +126,15 @@ module Selma
       end
 
       def test_should_normalize_newlines
-        skip
+        skip("non-essential feature")
+
         assert_equal("a\n\n\n\n\nz",
           Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a\r\n\n\r\r\r\nz"))
       end
 
       def test_should_strip_control_characters_except_ascii_whitespace
-        skip
+        skip("non-essential feature")
+
         sample_control_chars = "\u0001\u0008\u000b\u000e\u001f\u007f\u009f"
         whitespace = "\t\n\f\u0020"
 
@@ -131,8 +143,10 @@ module Selma
       end
 
       def test_should_strip_non_characters
-        skip
+        skip("non-essential feature")
+
         sample_non_chars = "\ufdd0\ufdef\ufffe\uffff\u{1fffe}\u{1ffff}\u{2fffe}\u{2ffff}\u{3fffe}\u{3ffff}\u{4fffe}\u{4ffff}\u{5fffe}\u{5ffff}\u{6fffe}\u{6ffff}\u{7fffe}\u{7ffff}\u{8fffe}\u{8ffff}\u{9fffe}\u{9ffff}\u{afffe}\u{affff}\u{bfffe}\u{bffff}\u{cfffe}\u{cffff}\u{dfffe}\u{dffff}\u{efffe}\u{effff}\u{ffffe}\u{fffff}\u{10fffe}\u{10ffff}"
+
         assert_equal("az", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a#{sample_non_chars}z"))
       end
     end

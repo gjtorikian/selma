@@ -6,7 +6,7 @@ module Selma
       RESTRICTED = freeze_config(
         elements: ["b", "em", "i", "strong", "u"],
 
-        whitespace_elements: DEFAULT[:whitespace_elements]
+        whitespace_elements: DEFAULT[:whitespace_elements],
       )
     end
   end

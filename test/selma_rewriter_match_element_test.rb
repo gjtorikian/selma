@@ -18,6 +18,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_works
     frag = "<strong>Wow!</strong>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [Handler.new]).rewrite(frag)
+
     assert_equal('<strong class="boldy">Wow!</strong>', modified_doc)
   end
 
@@ -25,6 +26,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     sanitizer = Selma::Sanitizer.new(Selma::Sanitizer::Config::RELAXED)
     frag = "<malarky><strong><junk>Wow!</junk></strong></malarky>"
     modified_doc = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [Handler.new]).rewrite(frag)
+
     assert_equal('<strong class="boldy">Wow!</strong>', modified_doc)
   end
 
@@ -57,21 +59,26 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_performs_handlers_in_order
     frag = "<div>Wow!</div>"
     modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [FirstRewrite.new]).rewrite(frag)
+
     assert_equal('<div class="boldy">Wow!</div>', modified_doc)
 
     modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [SecondRewrite.new]).rewrite(frag)
+
     assert_equal(frag, modified_doc)
 
     modified_doc = Selma::Rewriter.new(sanitizer: @sanitizer, handlers: [FirstRewrite.new, SecondRewrite.new]).rewrite(frag)
+
     assert_equal('<div class="boldy boldy2">Wow!</div>', modified_doc)
   end
 
   class GetAncestors < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
+    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
+    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -79,6 +86,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
 
     def handle_element(element)
       ancestors = ["div", "p", "foo"]
+
       assert_equal(ancestors, element.ancestors)
     end
   end
@@ -91,9 +99,11 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class GetEmptyAncestors < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
+    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
+    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -101,6 +111,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
 
     def handle_element(element)
       ancestors = []
+
       assert_equal("strong", element.tag_name)
       assert_equal(ancestors, element.ancestors)
     end
@@ -126,6 +137,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_appends_as_html
     frag = "<strong>Wow!</strong>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AppendHtml.new]).rewrite(frag)
+
     assert_equal("<strong>Wow!<em>Gee!</em></strong>", modified_doc)
   end
 
@@ -144,6 +156,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_appends_as_text
     frag = "<strong>Wow!</strong>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AppendText.new]).rewrite(frag)
+
     assert_equal("<strong>Wow!&lt;em&gt;Gee!&lt;/em&gt;</strong>", modified_doc)
   end
 
@@ -162,6 +175,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_wraps_as_html
     frag = "<strong>Wow!</strong>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [WrapText.new]).rewrite(frag)
+
     assert_equal(%(<a href="www.yetto.app.com"><strong>Wow!</strong></a>), modified_doc)
   end
 
@@ -180,6 +194,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   def test_that_it_sets_inner_content
     frag = "<strong>Wow!</strong>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [SetInnerContent.new]).rewrite(frag)
+
     assert_equal(%(<strong>Gee!</strong>), modified_doc)
   end
 

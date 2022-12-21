@@ -157,24 +157,28 @@ module Selma
         def test_should_allow_attributes_on_all_elements_if_allowlisted_under_all
           input = "<p>bar</p>"
           Selma::Rewriter.new.rewrite(input)
+
           assert_equal(" bar ", Selma::Rewriter.new.rewrite(input))
 
           sanitizer = Selma::Sanitizer.new({
             elements: ["p"],
             attributes: { all: ["class"] },
           })
+
           assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
 
           sanitizer = Selma::Sanitizer.new({
             elements: ["p"],
             attributes: { "div" => ["class"] },
           })
+
           assert_equal("<p>bar</p>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
 
           sanitizer = Selma::Sanitizer.new({
             elements: ["p"],
             attributes: { "p" => ["title"], :all => ["class"] },
           })
+
           assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
@@ -186,6 +190,7 @@ module Selma
             attributes: { "a" => ["href"] },
             protocols: { "a" => { "href" => ["http"] } },
           })
+
           assert_equal("<a>Link</a>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
@@ -197,6 +202,7 @@ module Selma
             attributes: { "a" => ["href"] },
             protocols: { "a" => { "href" => [:relative] } },
           })
+
           assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
@@ -208,6 +214,7 @@ module Selma
             attributes: { "a" => ["href"] },
             protocols: { "a" => { "href" => [:relative] } },
           })
+
           assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
 
           input = '<a href="somepage#fn:1">Footnote 1</a>'
@@ -217,6 +224,7 @@ module Selma
             attributes: { "a" => ["href"] },
             protocols: { "a" => { "href" => [:relative] } },
           })
+
           assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
 
           input = '<a href="fn:1">Footnote 1</a>'
@@ -226,37 +234,44 @@ module Selma
             attributes: { "a" => ["href"] },
             protocols: { "a" => { "href" => [:relative] } },
           })
+
           assert_equal("<a>Footnote 1</a>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
         def test_should_remove_the_contents_of_filtered_nodes_when_remove_contents_is_true
           sanitizer = Selma::Sanitizer.new({ remove_contents: true })
+
           assert_equal("foo bar ",
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite("foo bar <div>baz<span>quux</span></div>"))
         end
 
         def test_remove_the_contents_of_specified_nodes_when_remove_contents_is_an_array_or_set_of_element_names_as_strings
           sanitizer = Selma::Sanitizer.new({ remove_contents: ["script", "span"] })
+
           assert_equal("foo bar baz hi",
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite('foo bar <div>baz<span>quux</span> <b>hi</b><script>alert("hello!");</script></div>'))
 
           sanitizer = Selma::Sanitizer.new({ remove_contents: Set.new(["script", "span"]) })
+
           assert_equal("foo bar baz hi",
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite('foo bar <div>baz<span>quux</span> <b>hi</b><script>alert("hello!");</script></div>'))
         end
 
         def test_should_remove_the_contents_of_allowlisted_iframes
           sanitizer = Selma::Sanitizer.new({ elements: ["iframe"] })
+
           assert_equal("<iframe> </iframe>",
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite("<iframe>hi <script>hello</script></iframe>"))
         end
 
         def test_should_not_allow_arbitrary_html5_data_attributes_by_default
           sanitizer = Selma::Sanitizer.new({ elements: ["b"] })
+
           assert_equal("<b></b>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite('<b data-foo="bar"></b>'))
 
           sanitizer = Selma::Sanitizer.new({ attributes: { "b" => ["class"] },
                                              elements: ["b"], })
+
           assert_equal('<b class="foo"></b>',
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite('<b class="foo" data-foo="bar"></b>'))
         end
@@ -268,6 +283,7 @@ module Selma
           )
 
           str = '<b data-foo="valid" data-bar="valid"></b>'
+
           assert_equal(str, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(str))
 
           assert_equal("<b></b>",
@@ -355,13 +371,15 @@ module Selma
         end
 
         def test_should_prevent_meta_tags_from_being_used_to_set_a_non_utf8_charset_when_charset_other_values
-          skip
+          skip("non-essential feature")
+
           sanitizer = Selma::Sanitizer.new(
             elements: ["html", "meta"],
             attributes: { "meta" => ["content", "http-equiv"] },
           )
 
           result = "<!DOCTYPE html><html><meta http-equiv=\"content-type\" content=\" text/html;charset=utf-8\">Howdy!</html>"
+
           assert_equal(result, Selma::Sanitizer.new(sanitizer: sanitizer).rewrite(
               '<html><meta http-equiv="content-type" content=" text/html; charset=us-ascii">Howdy!</html>',
             ))
@@ -372,6 +390,7 @@ module Selma
           )
 
           result = '<html><meta http-equiv=\"Content-Type\" content=\"text/plain;charset=utf-8\">Howdy!</html>'
+
           assert_equal(
             result, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(
               '<html><meta http-equiv="Content-Type" content="text/plain;charset = us-ascii">Howdy!</html>',
@@ -380,11 +399,13 @@ module Selma
         end
 
         def test_should_not_modify_meta_tags_that_already_set_a_utf8_charset
-          skip
+          skip("non-essential feature")
+
           sanitizer = Selma::Sanitizer.new(elements: ["html", "head", "meta", "body"],
             attributes: { "meta" => ["content", "http-equiv"] })
 
           result = '<html><head><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"></head><body>Howdy!</body></html>'
+
           assert_equal(
             result, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(
               '<html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8"></head><body>Howdy!</body></html>', sanitizer: sanitizer

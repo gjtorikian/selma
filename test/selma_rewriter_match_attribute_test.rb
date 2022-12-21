@@ -18,15 +18,18 @@ class SelmaRewriterMatchAttributeTest < Minitest::Test
   def test_that_it_removes_attributes
     frag = "<a foo='bleh'><span foo='keep'>Wow!</span></a>"
     modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [RemoveAttr.new]).rewrite(frag)
+
     assert_equal("<a><span foo='keep'>Wow!</span></a>", modified_doc)
   end
 
   class GetAttrs < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "div")
 
+    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
+    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR

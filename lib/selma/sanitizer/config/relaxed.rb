@@ -30,7 +30,7 @@ module Selma
         protocols: merge(BASIC[:protocols],
           "del" => { "cite" => ["http", "https", :relative] },
           "img" => { "src"  => ["http", "https", :relative] },
-          "ins" => { "cite" => ["http", "https", :relative] })
+          "ins" => { "cite" => ["http", "https", :relative] }),
       )
     end
   end

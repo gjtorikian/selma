@@ -14,7 +14,8 @@ module Selma
     end
 
     def test_should_escape_erb_style_tags
-      skip
+      skip("non-essential feature")
+
       assert_equal("&lt;% naughty_ruby_code %&gt;",
         Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<% naughty_ruby_code %>"))
 
@@ -23,7 +24,8 @@ module Selma
     end
 
     def test_should_remove_php_style_tags
-      skip
+      skip("non-essential feature")
+
       assert_equal("", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<? naughtyPHPCode(); ?>"))
 
       assert_equal("", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("<?= naughtyPHPCode(); ?>"))
