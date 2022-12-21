@@ -30,10 +30,10 @@ require "selma"
 require "yaml"
 
 if ARGV.include?("-v")
-  puts "---------- Commonmarker version info ----------"
-  puts Commonmarker::VERSION
+  puts "---------- Selma version info ----------"
+  puts Selma::VERSION
   puts
-  puts "---------- Commonmarker installed gemspec ----------"
+  puts "---------- Selma installed gemspec ----------"
   puts gemspec.to_ruby
   puts
 end
@@ -53,7 +53,7 @@ describe gemspec.full_name do
   let(:selma_files) { ["Cargo.toml"] }
 
   # it "loads the same version as the spec we've loaded" do
-  #   assert_equal(Commonmarker::VERSION, gemspec.version.to_s)
+  #   assert_equal(Selma::VERSION, gemspec.version.to_s)
   # end
 
   describe "cruby" do
