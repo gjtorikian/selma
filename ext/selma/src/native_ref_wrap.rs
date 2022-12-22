@@ -1,4 +1,4 @@
-use std::{cell::Cell, marker::PhantomData, mem, rc::Rc};
+use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
 // NOTE: My Rust isn't good enough to know what any of this does,
 // but it was taken from https://github.com/cloudflare/lol-html/blob/1a1ab2e2bf896f815fe8888ed78ccdf46d7c6b85/js-api/src/lib.rs#LL38
@@ -37,7 +37,7 @@ pub struct NativeRefWrap<R> {
 impl<R> NativeRefWrap<R> {
     pub fn wrap<I>(inner: &I) -> (Self, Anchor) {
         let wrap = NativeRefWrap {
-            inner_ptr: unsafe { mem::transmute(inner) },
+            inner_ptr: inner as *const I as *mut R,
             poisoned: Rc::new(Cell::new(false)),
         };
 
@@ -48,7 +48,7 @@ impl<R> NativeRefWrap<R> {
 
     pub fn wrap_mut<I>(inner: &mut I) -> (Self, Anchor) {
         let wrap = NativeRefWrap {
-            inner_ptr: unsafe { mem::transmute(inner) },
+            inner_ptr: inner as *mut I as *mut R,
             poisoned: Rc::new(Cell::new(false)),
         };
 

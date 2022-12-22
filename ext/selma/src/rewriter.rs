@@ -372,7 +372,7 @@ impl SelmaRewriter {
     fn process_element_handlers(
         rb_handler: Value,
         element: &mut Element,
-        ancestors: &Vec<String>,
+        ancestors: &[String],
     ) -> Result<(), magnus::Error> {
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
@@ -406,7 +406,7 @@ impl SelmaRewriter {
         if content.is_empty() {
             return Ok(());
         }
-        let rb_result = rb_handler.funcall(Self::SELMA_HANDLE_TEXT, (content,));
+        let rb_result = rb_handler.funcall::<_, _, String>(Self::SELMA_HANDLE_TEXT, (content,));
 
         if rb_result.is_err() {
             return Err(magnus::Error::new(
@@ -419,7 +419,7 @@ impl SelmaRewriter {
             ));
         }
 
-        let new_content: String = rb_result.unwrap();
+        let new_content = rb_result.unwrap();
         // TODO: can this be an option?
         text.replace(&new_content, ContentType::Html);
 

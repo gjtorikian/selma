@@ -35,7 +35,7 @@ pub struct SelmaSanitizer(std::cell::RefCell<Sanitizer>);
 
 impl SelmaSanitizer {
     const SELMA_SANITIZER_ALLOW: u8 = (1 << 0);
-    const SELMA_SANITIZER_ESCAPE_TAGFILTER: u8 = (1 << 1);
+    // const SELMA_SANITIZER_ESCAPE_TAGFILTER: u8 = (1 << 1);
     const SELMA_SANITIZER_REMOVE_CONTENTS: u8 = (1 << 2);
     const SELMA_SANITIZER_WRAP_WHITESPACE: u8 = (1 << 3);
 
@@ -229,7 +229,7 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn sanitize_attributes(&self, element: &mut Element) {
+    pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), magnus::Error> {
         let binding = self.0.borrow_mut();
         let tag = Tag::tag_from_element(element);
         let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
@@ -247,7 +247,7 @@ impl SelmaSanitizer {
             // encountered, remove the entire element to be safe.
             if attr_name.starts_with("<!--") {
                 Self::force_remove_element(self, element);
-                return;
+                return Ok(());
             }
 
             // first, trim leading spaces and unescape any encodings
@@ -268,7 +268,15 @@ impl SelmaSanitizer {
                 // since output is always UTF-8.
                 if Tag::is_meta(tag) {
                     if attr_name == "charset" && unescaped_attr_val != "utf-8" {
-                        element.set_attribute(attr_name, "utf-8");
+                        match element.set_attribute(attr_name, "utf-8") {
+                            Ok(_) => {}
+                            Err(_) => {
+                                return Err(magnus::Error::new(
+                                    exception::runtime_error(),
+                                    format!("Unable to change {:?}", attr_name),
+                                ));
+                            }
+                        }
                     }
                 } else if !unescaped_attr_val.is_empty() {
                     let mut buf = String::new();
@@ -287,14 +295,16 @@ impl SelmaSanitizer {
 
         let required = &element_sanitizer.required_attrs;
         if required.contains(&"*".to_string()) {
-            return;
+            return Ok(());
         }
         for attr in element.attributes().iter() {
             let attr_name = &attr.name();
             if required.contains(attr_name) {
-                return;
+                return Ok(());
             }
         }
+
+        Ok(())
     }
 
     fn should_keep_attribute(

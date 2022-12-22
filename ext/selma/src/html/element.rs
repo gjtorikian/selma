@@ -151,7 +151,7 @@ impl SelmaHTMLElement {
 
     fn find_content_type(content_type: Symbol) -> ContentType {
         match content_type.name() {
-            Ok(name) => match (name) {
+            Ok(name) => match name {
                 Cow::Borrowed("as_text") => ContentType::Text,
                 Cow::Borrowed("as_html") => ContentType::Html,
                 _ => Err(Error::new(
@@ -162,7 +162,7 @@ impl SelmaHTMLElement {
             },
             Err(err) => Err(Error::new(
                 exception::runtime_error(),
-                format!("Could not unwrap symbol"),
+                format!("Could not unwrap symbol: {:?}", err),
             ))
             .unwrap(),
         }
