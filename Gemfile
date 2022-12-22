@@ -12,6 +12,10 @@ group :debug do
   gem "debug"
 end
 
+group :development, :test do
+  gem "ruby_memcheck"
+end
+
 group :test do
   gem "minitest", "~> 5.0"
   gem "minitest-focus", "~> 1.2"

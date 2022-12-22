@@ -1,0 +1,5 @@
+#!/bin/bash
+
+script/docker_build
+
+docker run gjtorikian/selma:latest

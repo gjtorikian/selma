@@ -1,0 +1,8 @@
+#!/bin/bash
+
+sha=$(git rev-parse HEAD | cut -c 1-8)
+date=$(date +%x_%H:%M:%S)
+
+docker build -t gjtorikian/selma:latest --build-arg CACHEBUST=$(date +%s) -f test/memcheck/Dockerfile .
+
+docker rmi $(docker images -qa -f 'dangling=true') --force
