@@ -1,11 +1,11 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
-
 use lol_html::{
     doc_comments, doctype, element,
     html_content::{ContentType, Element, EndTag, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
 use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
+
+use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
@@ -164,8 +164,6 @@ impl SelmaRewriter {
         let sanitized_html = match &self.0.borrow().sanitizer {
             None => html,
             Some(sanitizer) => {
-                // let first_pass_html = Self::perform_initial_sanitization(sanitizer, &html).unwrap();
-
                 // due to malicious html crafting
                 // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
                 // we need to run sanitization several times to truly remove unwanted tags,
