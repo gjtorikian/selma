@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.3](https://github.com/gjtorikian/selma/tree/v0.0.3) (2022-12-24)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.2...v0.0.3)
+
+**Merged pull requests:**
+
+- Clean up various warnings [\#3](https://github.com/gjtorikian/selma/pull/3) ([gjtorikian](https://github.com/gjtorikian))
+
 ## [v0.0.2](https://github.com/gjtorikian/selma/tree/v0.0.2) (2022-12-21)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.1...v0.0.2)
