@@ -83,18 +83,18 @@ impl SelmaRewriter {
                         return Err(magnus::Error::new(
                             exception::no_method_error(),
                             format!(
-                                "Could not call #selector on {:?}; is this an object that defines it?",
-                                classname
+                                "Could not call #selector on {classname:?}; is this an object that defines it?",
+
                             ),
                         ));
                     }
 
                     let rb_selector: WrappedStruct<SelmaSelector> =
                         match rb_handler.funcall("selector", ()) {
-                            Err(e) => {
+                            Err(err) => {
                                 return Err(magnus::Error::new(
                                     exception::type_error(),
-                                    format!("Error instantiating selector: {}", e),
+                                    format!("Error instantiating selector: {err:?}"),
                                 ));
                             }
                             Ok(rb_selector) => rb_selector,
@@ -180,7 +180,7 @@ impl SelmaRewriter {
             Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),
-                format!("{}", err),
+                format!("{err:?}"),
             )),
         }
     }
@@ -359,7 +359,7 @@ impl SelmaRewriter {
                 Err(err) => {
                     return Err(magnus::Error::new(
                         exception::runtime_error(),
-                        format!("{}", err),
+                        format!("{err:?}"),
                     ));
                 }
             }
@@ -391,7 +391,7 @@ impl SelmaRewriter {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),
-                format!("{}", err),
+                format!("{err:?}"),
             )),
         }
     }

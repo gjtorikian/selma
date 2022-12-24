@@ -7,4 +7,4 @@ bundle exec rake compile
 
 # LD_PRELOAD=$(gcc -print-file-name=libasan.so) bundle exec rake test:asan
 
-SEED=24166 bundle exec rake test:memcheck
+bundle exec rake test:memcheck

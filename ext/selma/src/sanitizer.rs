@@ -273,7 +273,7 @@ impl SelmaSanitizer {
                             Err(_) => {
                                 return Err(magnus::Error::new(
                                     exception::runtime_error(),
-                                    format!("Unable to change {:?}", attr_name),
+                                    format!("Unable to change {attr_name:?}"),
                                 ));
                             }
                         }
@@ -433,7 +433,7 @@ impl SelmaSanitizer {
             Ok(_) => Ok(true),
             Err(err) => Err(Error::new(
                 exception::runtime_error(),
-                format!("AttributeNameError: {}", err),
+                format!("AttributeNameError: {err:?}"),
             )),
         }
     }

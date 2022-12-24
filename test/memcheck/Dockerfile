@@ -1,4 +1,4 @@
-FROM ruby:3.1-slim
+FROM arm64v8/ruby:3.1-slim
 
 # Non-interactive frontend for debian stuff to reduce error noise
 ENV DEBIAN_FRONTEND noninteractive

@@ -51,7 +51,7 @@ impl SelmaHTMLElement {
                 Ok(_) => Ok(value),
                 Err(err) => Err(Error::new(
                     exception::runtime_error(),
-                    format!("AttributeNameError: {}", err),
+                    format!("AttributeNameError: {err:?}"),
                 )),
             }
         } else {
@@ -81,7 +81,7 @@ impl SelmaHTMLElement {
                     Ok(_) => {}
                     Err(err) => Err(Error::new(
                         exception::runtime_error(),
-                        format!("AttributeNameError: {}", err),
+                        format!("AttributeNameError: {err:?}"),
                     ))
                     .unwrap(),
                 });
@@ -99,7 +99,7 @@ impl SelmaHTMLElement {
             .for_each(|ancestor| match array.push(RString::new(ancestor)) {
                 Ok(_) => {}
                 Err(err) => {
-                    Err(Error::new(exception::runtime_error(), format!("{}", err))).unwrap()
+                    Err(Error::new(exception::runtime_error(), format!("{err:?}"))).unwrap()
                 }
             });
 
@@ -156,13 +156,13 @@ impl SelmaHTMLElement {
                 Cow::Borrowed("as_html") => ContentType::Html,
                 _ => Err(Error::new(
                     exception::runtime_error(),
-                    format!("unknown symbol `{}`", name),
+                    format!("unknown symbol `{name:?}`"),
                 ))
                 .unwrap(),
             },
             Err(err) => Err(Error::new(
                 exception::runtime_error(),
-                format!("Could not unwrap symbol: {:?}", err),
+                format!("Could not unwrap symbol: {err:?}"),
             ))
             .unwrap(),
         }
