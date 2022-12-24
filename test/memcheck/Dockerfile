@@ -45,7 +45,6 @@ ENV BUNDLE_GEMFILE=$APP_HOME/Gemfile \
 RUN bundle install
 
 WORKDIR $APP_HOME
-# RUN echo "$CACHEBUST"
 COPY . $APP_HOME
 
 COPY test/memcheck/entrypoint.sh /usr/bin/
