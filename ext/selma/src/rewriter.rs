@@ -216,6 +216,7 @@ impl SelmaRewriter {
 
                         Ok(())
                     })],
+                    // TODO: allow for MemorySettings to be defined
                     ..Settings::default()
                 },
                 |c: &[u8]| first_pass_html.extend_from_slice(c),
@@ -400,10 +401,6 @@ impl SelmaRewriter {
         // prevents missing `handle_text` function
         let content = text.as_str();
 
-        // FIXME: why does this happen?
-        if content.is_empty() {
-            return Ok(());
-        }
         let rb_result = rb_handler.funcall::<_, _, String>(Self::SELMA_HANDLE_TEXT, (content,));
 
         if rb_result.is_err() {
