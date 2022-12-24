@@ -401,6 +401,11 @@ impl SelmaRewriter {
         // prevents missing `handle_text` function
         let content = text.as_str();
 
+        // seems that sometimes lol-html returns blank text / EOLs?
+        if content.is_empty() {
+            return Ok(());
+        }
+
         let rb_result = rb_handler.funcall::<_, _, String>(Self::SELMA_HANDLE_TEXT, (content,));
 
         if rb_result.is_err() {
