@@ -59,7 +59,7 @@ class SelmaMaliciousnessTest < Minitest::Test
 
   def test_that_it_raises_on_non_array_handlers
     frag = "<sup>Wow!</sup>"
-    assert_raises(NoMethodError) do
+    assert_raises(TypeError) do
       Selma::Rewriter.new(sanitizer: nil, handlers: 818).rewrite(frag)
     end
   end

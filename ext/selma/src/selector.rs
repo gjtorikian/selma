@@ -27,7 +27,7 @@ impl SelmaSelector {
             if css.parse::<lol_html::Selector>().is_err() {
                 return Err(Error::new(
                     exception::arg_error(),
-                    format!("Could not parse `match_element` (`{}`) as valid CSS", css),
+                    format!("Could not parse `match_element` (`{css:?}`) as valid CSS"),
                 ));
             }
         }
@@ -37,10 +37,7 @@ impl SelmaSelector {
             if css.parse::<lol_html::Selector>().is_err() {
                 return Err(Error::new(
                     exception::arg_error(),
-                    format!(
-                        "Could not parse `match_text_within` (`{}`) as valid CSS",
-                        css
-                    ),
+                    format!("Could not parse `match_text_within` (`{css:?}`) as valid CSS",),
                 ));
             }
         }

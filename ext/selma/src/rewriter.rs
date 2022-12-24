@@ -1,11 +1,11 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
-
 use lol_html::{
     doc_comments, doctype, element,
     html_content::{ContentType, Element, EndTag, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
 use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
+
+use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
@@ -83,18 +83,18 @@ impl SelmaRewriter {
                         return Err(magnus::Error::new(
                             exception::no_method_error(),
                             format!(
-                                "Could not call #selector on {:?}; is this an object that defines it?",
-                                classname
+                                "Could not call #selector on {classname:?}; is this an object that defines it?",
+
                             ),
                         ));
                     }
 
                     let rb_selector: WrappedStruct<SelmaSelector> =
                         match rb_handler.funcall("selector", ()) {
-                            Err(e) => {
+                            Err(err) => {
                                 return Err(magnus::Error::new(
                                     exception::type_error(),
-                                    format!("Error instantiating selector: {}", e),
+                                    format!("Error instantiating selector: {err:?}"),
                                 ));
                             }
                             Ok(rb_selector) => rb_selector,
@@ -164,8 +164,6 @@ impl SelmaRewriter {
         let sanitized_html = match &self.0.borrow().sanitizer {
             None => html,
             Some(sanitizer) => {
-                // let first_pass_html = Self::perform_initial_sanitization(sanitizer, &html).unwrap();
-
                 // due to malicious html crafting
                 // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
                 // we need to run sanitization several times to truly remove unwanted tags,
@@ -182,7 +180,7 @@ impl SelmaRewriter {
             Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),
-                format!("{}", err),
+                format!("{err:?}"),
             )),
         }
     }
@@ -218,6 +216,7 @@ impl SelmaRewriter {
 
                         Ok(())
                     })],
+                    // TODO: allow for MemorySettings to be defined
                     ..Settings::default()
                 },
                 |c: &[u8]| first_pass_html.extend_from_slice(c),
@@ -361,7 +360,7 @@ impl SelmaRewriter {
                 Err(err) => {
                     return Err(magnus::Error::new(
                         exception::runtime_error(),
-                        format!("{}", err),
+                        format!("{err:?}"),
                     ));
                 }
             }
@@ -372,7 +371,7 @@ impl SelmaRewriter {
     fn process_element_handlers(
         rb_handler: Value,
         element: &mut Element,
-        ancestors: &Vec<String>,
+        ancestors: &[String],
     ) -> Result<(), magnus::Error> {
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
@@ -393,7 +392,7 @@ impl SelmaRewriter {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),
-                format!("{}", err),
+                format!("{err:?}"),
             )),
         }
     }
@@ -402,11 +401,12 @@ impl SelmaRewriter {
         // prevents missing `handle_text` function
         let content = text.as_str();
 
-        // FIXME: why does this happen?
+        // seems that sometimes lol-html returns blank text / EOLs?
         if content.is_empty() {
             return Ok(());
         }
-        let rb_result = rb_handler.funcall(Self::SELMA_HANDLE_TEXT, (content,));
+
+        let rb_result = rb_handler.funcall::<_, _, String>(Self::SELMA_HANDLE_TEXT, (content,));
 
         if rb_result.is_err() {
             return Err(magnus::Error::new(
@@ -419,7 +419,7 @@ impl SelmaRewriter {
             ));
         }
 
-        let new_content: String = rb_result.unwrap();
+        let new_content = rb_result.unwrap();
         // TODO: can this be an option?
         text.replace(&new_content, ContentType::Html);
 
