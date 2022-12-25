@@ -282,10 +282,9 @@ impl SelmaSanitizer {
                     let mut buf = String::new();
                     // ...then, escape any special characters, for security
                     if attr_name == "href" {
-                        // FIXME: gross--------------vvvv
-                        escapist::escape_href(&mut buf, unescaped_attr_val.to_string().as_str());
+                        escapist::escape_href(&mut buf, unescaped_attr_val.as_str());
                     } else {
-                        escapist::escape_html(&mut buf, unescaped_attr_val.to_string().as_str());
+                        escapist::escape_html(&mut buf, unescaped_attr_val.as_str());
                     };
 
                     element.set_attribute(attr_name, &buf);
