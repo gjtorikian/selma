@@ -165,11 +165,11 @@ impl SelmaRewriter {
             None => Ok(html),
             Some(sanitizer) => {
                 let sanitized_html = match Self::perform_sanitization(sanitizer, &html) {
-                    Ok(sanitized_html) => String::from_utf8(sanitized_html),
+                    Ok(sanitized_html) => sanitized_html,
                     Err(err) => return Err(err),
                 };
 
-                String::from_utf8(sanitized_html).unwrap()
+                String::from_utf8(sanitized_html)
             }
         };
         let binding = self.0.borrow_mut();
