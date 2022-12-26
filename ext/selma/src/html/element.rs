@@ -1,10 +1,6 @@
-use std::borrow::Cow;
-
 use crate::native_ref_wrap::NativeRefWrap;
-use lol_html::html_content::{ContentType, Element};
-use magnus::{
-    exception, method, scan_args, Error, Module, RArray, RClass, RHash, RString, Symbol, Value,
-};
+use lol_html::html_content::Element;
+use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Value};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,
@@ -112,7 +108,7 @@ impl SelmaHTMLElement {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let (text_str, content_type) = match Self::scan_parse_args(args) {
+        let (text_str, content_type) = match crate::scan_text_args(args) {
             Ok((text_str, content_type)) => (text_str, content_type),
             Err(err) => return Err(err),
         };
@@ -126,7 +122,7 @@ impl SelmaHTMLElement {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let (text_str, content_type) = match Self::scan_parse_args(args) {
+        let (text_str, content_type) = match crate::scan_text_args(args) {
             Ok((text_str, content_type)) => (text_str, content_type),
             Err(err) => return Err(err),
         };
@@ -140,7 +136,7 @@ impl SelmaHTMLElement {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let (text_str, content_type) = match Self::scan_parse_args(args) {
+        let (text_str, content_type) = match crate::scan_text_args(args) {
             Ok((text_str, content_type)) => (text_str, content_type),
             Err(err) => return Err(err),
         };
@@ -154,7 +150,7 @@ impl SelmaHTMLElement {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let (inner_content, content_type) = match Self::scan_parse_args(args) {
+        let (inner_content, content_type) = match crate::scan_text_args(args) {
             Ok((inner_content, content_type)) => (inner_content, content_type),
             Err(err) => return Err(err),
         };
@@ -163,48 +159,12 @@ impl SelmaHTMLElement {
 
         Ok(())
     }
-
-    fn find_content_type(content_type: Symbol) -> ContentType {
-        match content_type.name() {
-            Ok(name) => match name {
-                Cow::Borrowed("text") => ContentType::Text,
-                Cow::Borrowed("html") => ContentType::Html,
-                _ => Err(Error::new(
-                    exception::runtime_error(),
-                    format!("unknown symbol `{name:?}`"),
-                ))
-                .unwrap(),
-            },
-            Err(err) => Err(Error::new(
-                exception::runtime_error(),
-                format!("Could not unwrap symbol: {err:?}"),
-            ))
-            .unwrap(),
-        }
-    }
-
-    #[allow(clippy::let_unit_value)]
-    fn scan_parse_args(args: &[Value]) -> Result<(String, ContentType), magnus::Error> {
-        let args = scan_args::scan_args(args)?;
-        let (text,): (String,) = args.required;
-        let _: () = args.optional;
-        let _: () = args.splat;
-        let _: () = args.trailing;
-        let _: () = args.block;
-
-        let kwargs = scan_args::get_kwargs::<_, (Symbol,), (), ()>(args.keywords, &["as"], &[])?;
-        let as_sym = kwargs.required;
-
-        let content_type = Self::find_content_type(as_sym.0);
-
-        Ok((text, content_type))
-    }
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_element = c_html
         .define_class("Element", Default::default())
-        .expect("cannot find class Selma::Element");
+        .expect("cannot find class Selma::HTML::Element");
 
     c_element.define_method("tag_name", method!(SelmaHTMLElement::tag_name, 0))?;
     c_element.define_method("[]", method!(SelmaHTMLElement::get_attribute, 1))?;

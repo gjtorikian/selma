@@ -91,7 +91,7 @@ The real power in Selma comes in its use of handlers. A handler is simply an obj
 
 - `selector`, a method which MUST return instance of `Selma::Selector` which defines the CSS classes to match
 - `handle_element`, a method that's call on each matched element
-- `handle_text`, a method that's called on each matched text node; this MUST return a string
+- `handle_text_chunk`, a method that's called on each matched text node; this MUST return a string
 
 Here's an example which rewrites the `href` attribute on `a` and the `src` attribute on `img` to be `https` rather than `http`.
 
@@ -118,7 +118,7 @@ rewriter = Selma::Rewriter.new(handlers: [MatchAttribute.new])
 The `Selma::Selector` object has three possible kwargs:
 
 - `match_element`: any element which matches this CSS rule will be passed on to `handle_element`
-- `match_text_within`: any element which matches this CSS rule will be passed on to `handle_text`
+- `match_text_within`: any element which matches this CSS rule will be passed on to `handle_text_chunk`
 - `ignore_text_within`: this is an array of element names whose text contents will be ignored
 
 You've seen an example of `match_element`; here's one for `match_text` which changes strings in various elements which are _not_ `pre` or `code`:
@@ -132,7 +132,7 @@ class MatchText
     SELECTOR
   end
 
-  def handle_text(text)
+  def handle_text_chunk(text)
     string.sub(/@.+/, "<a href=\"www.yetto.app/#{Regexp.last_match}\">")
   end
 end
@@ -150,8 +150,9 @@ The `element` argument in `handle_element` has the following methods:
 - `remove_attribute`: remove an attribute
 - `attributes`: list all the attributes
 - `ancestors`: list all the ancestors
-- `append(content, content_type)`: appends `content` to the element's inner content, i.e. inserts content right before the element's end tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
-- `wrap(start_text, end_text, content_type)`: adds `start_text` before an element and `end_text` after an element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `append(content, as: content_type)`: appends `content` to the element's inner content, i.e. inserts content right before the element's end tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `before(content, as: content_type)`: Inserts `content` before the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `after(content, as: content_type)`: Inserts `content` after the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `set_inner_content`: replaces inner content of the element with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 
 ## Benchmarks

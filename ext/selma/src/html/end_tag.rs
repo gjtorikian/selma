@@ -6,7 +6,7 @@ struct HTMLEndTag {
     end_tag: NativeRefWrap<EndTag<'static>>,
 }
 
-#[magnus::wrap(class = "Selma::HTML::Element")]
+#[magnus::wrap(class = "Selma::HTML::EndTag")]
 pub struct SelmaHTMLEndTag(std::cell::RefCell<HTMLEndTag>);
 
 /// SAFETY: This is safe because we only access this data when the GVL is held.
@@ -27,7 +27,7 @@ impl SelmaHTMLEndTag {
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_end_tag = c_html
         .define_class("EndTag", Default::default())
-        .expect("cannot find class Selma::EndTag");
+        .expect("cannot find class Selma::HTML::EndTag");
 
     c_end_tag.define_method("tag_name", method!(SelmaHTMLEndTag::tag_name, 0))?;
 

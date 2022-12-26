@@ -1,6 +1,6 @@
 use lol_html::{
     doc_comments, doctype, element,
-    html_content::{ContentType, Element, EndTag, TextChunk},
+    html_content::{Element, EndTag, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
 use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
@@ -8,7 +8,7 @@ use magnus::{exception, function, method, scan_args, Module, Object, RArray, RMo
 use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
 
 use crate::{
-    html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag},
+    html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag, text_chunk::SelmaHTMLTextChunk},
     sanitizer::SelmaSanitizer,
     selector::SelmaSelector,
     tags::Tag,
@@ -43,7 +43,7 @@ unsafe impl Send for SelmaRewriter {}
 impl SelmaRewriter {
     const SELMA_ON_END_TAG: &str = "on_end_tag";
     const SELMA_HANDLE_ELEMENT: &str = "handle_element";
-    const SELMA_HANDLE_TEXT: &str = "handle_text";
+    const SELMA_HANDLE_TEXT_CHUNK: &str = "handle_text_chunk";
 
     /// @yard
     /// @def new(sanitizer: Selma::Sanitizer.new(Selma::Sanitizer::Config::DEFAULT), handlers: [])
@@ -164,11 +164,15 @@ impl SelmaRewriter {
         let sanitized_html = match &self.0.borrow().sanitizer {
             None => html,
             Some(sanitizer) => {
-                // due to malicious html crafting
-                // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
-                // we need to run sanitization several times to truly remove unwanted tags,
-                // because lol-html happily accepts this garbage (by design?)
-                let sanitized_html = Self::perform_sanitization(sanitizer, &html).unwrap();
+                let sanitized_html = match Self::perform_sanitization(sanitizer, &html) {
+                    Ok(sanitized_html) => sanitized_html,
+                    Err(err) => {
+                        return Err(magnus::Error::new(
+                            exception::runtime_error(),
+                            format!("{err:?}"),
+                        ));
+                    }
+                };
 
                 String::from_utf8(sanitized_html).unwrap()
             }
@@ -397,33 +401,26 @@ impl SelmaRewriter {
         }
     }
 
-    fn process_text_handlers(rb_handler: Value, text: &mut TextChunk) -> Result<(), magnus::Error> {
-        // prevents missing `handle_text` function
-        let content = text.as_str();
+    fn process_text_handlers(
+        rb_handler: Value,
+        text_chunk: &mut TextChunk,
+    ) -> Result<(), magnus::Error> {
+        // prevents missing `handle_text_chunk` function
+        let content = text_chunk.as_str();
 
         // seems that sometimes lol-html returns blank text / EOLs?
         if content.is_empty() {
             return Ok(());
         }
 
-        let rb_result = rb_handler.funcall::<_, _, String>(Self::SELMA_HANDLE_TEXT, (content,));
-
-        if rb_result.is_err() {
-            return Err(magnus::Error::new(
-                exception::type_error(),
-                format!(
-                    "Expected #{:?} to return a string: {:?}",
-                    Self::SELMA_HANDLE_TEXT,
-                    rb_result.err().unwrap()
-                ),
-            ));
+        let rb_text_chunk = SelmaHTMLTextChunk::new(text_chunk);
+        match rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_TEXT_CHUNK, (rb_text_chunk,)) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(magnus::Error::new(
+                exception::runtime_error(),
+                format!("{err:?}"),
+            )),
         }
-
-        let new_content = rb_result.unwrap();
-        // TODO: can this be an option?
-        text.replace(&new_content, ContentType::Html);
-
-        Ok(())
     }
 }
 

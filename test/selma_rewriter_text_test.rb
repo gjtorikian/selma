@@ -10,8 +10,8 @@ class SelmaRewriterTextTest < Minitest::Test
       SELECTOR
     end
 
-    def handle_text(text)
-      text.sub("Wow", "MEOW!")
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("Wow", "MEOW!"), as: :text)
     end
   end
 
@@ -22,6 +22,29 @@ class SelmaRewriterTextTest < Minitest::Test
     assert_equal("<div>MEOW!!</div><span>MEOW!!</span><a>MEOW!!</a>", modified_doc)
   end
 
+  class GetTextContent < Minitest::Test
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    # rubocop:disable Lint/MissingSuper
+    def initialize
+      @assertions = 0
+    end
+    # rubocop:enable Lint/MissingSuper
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text_chunk)
+      assert_equal(:rc_data, text_chunk.text_type)
+    end
+  end
+
+  def test_that_it_gets_text_content
+    frag = "<title>Howdy</title>"
+    Selma::Rewriter.new(sanitizer: nil, handlers: [GetTextContent.new]).rewrite(frag)
+  end
+
   class TextRewriteElements
     SELECTOR = Selma::Selector.new(match_text_within: "a, div")
 
@@ -29,8 +52,8 @@ class SelmaRewriterTextTest < Minitest::Test
       SELECTOR
     end
 
-    def handle_text(text)
-      text.sub("Wow", "MEOW!")
+    def handle_text_chunk(text)
+      text.replace(text.content.sub("Wow", "MEOW!"), as: :text)
     end
   end
 
@@ -52,8 +75,8 @@ class SelmaRewriterTextTest < Minitest::Test
       element["class"] = "neato"
     end
 
-    def handle_text(text)
-      text.sub("you", "y'all")
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("you", "y'all"), as: :html)
     end
   end
 
@@ -71,8 +94,8 @@ class SelmaRewriterTextTest < Minitest::Test
       SELECTOR
     end
 
-    def handle_text(text)
-      text.sub("@gjtorik", "@gjtorikian")
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("@gjtorik", "@gjtorikian"), as: :text)
     end
   end
 
@@ -90,7 +113,7 @@ class SelmaRewriterTextTest < Minitest::Test
       Selma::Selector.new(match_text_within: "*", ignore_text_within: DEFAULT_IGNORED_ANCESTOR_TAGS)
     end
 
-    def handle_text(text)
+    def handle_text_chunk(text)
       return text unless text.include?(":")
 
       emoji_image_filter(text)
@@ -147,7 +170,7 @@ class SelmaRewriterTextTest < Minitest::Test
     end
   end
 
-  def test_that_it_can_handle_text_with_emoji
+  def test_that_it_can_handle_text_chunk_with_emoji
     skip("This should be solved when MemorySettings configuration are added")
     require "gemojione"
 

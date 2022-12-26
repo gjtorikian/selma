@@ -138,21 +138,20 @@ class SelmaMaliciousnessTest < Minitest::Test
     end
   end
 
-  class GarbageTextReturn
+  class GarbageTextOptions
     def selector
       Selma::Selector.new(match_text_within: "time")
     end
 
-    def handle_text(text)
-      400
+    def handle_text_chunk(text)
+      text.replace(text.sub("Wow!", as: :boop))
     end
   end
 
   def test_that_it_raises_on_handle_text_returning_non_string
-    skip("TODO")
     frag = "<time>Wow!</time>"
     assert_raises(RuntimeError) do
-      Selma::Rewriter.new(sanitizer: nil, handlers: [GarbageTextReturn.new]).rewrite(frag)
+      Selma::Rewriter.new(sanitizer: nil, handlers: [GarbageTextOptions.new]).rewrite(frag)
     end
   end
 end
