@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.4](https://github.com/gjtorikian/selma/tree/v0.0.4) (2022-12-26)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.3...v0.0.4)
+
+**Merged pull requests:**
+
+- Method signature changes [\#6](https://github.com/gjtorikian/selma/pull/6) ([gjtorikian](https://github.com/gjtorikian))
+- Bump escapist from 0.0.1 to 0.0.2 [\#5](https://github.com/gjtorikian/selma/pull/5) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Update escapist / fix Result warnings [\#4](https://github.com/gjtorikian/selma/pull/4) ([gjtorikian](https://github.com/gjtorikian))
+
 ## [v0.0.3](https://github.com/gjtorikian/selma/tree/v0.0.3) (2022-12-24)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.2...v0.0.3)
