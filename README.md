@@ -56,6 +56,10 @@ allow_comments: false,
 # "<!DOCTYPE html>" when sanitizing a document.
 allow_doctype: false,
 
+# HTML elements to allow. By default, no elements are allowed (which means
+# that all HTML will be stripped).
+elements: ["a", "b", "img", ],
+
 # HTML attributes to allow in specific elements. The key is the name of the element,
 # and the value is an array of allowed attributes. By default, no attributes
 # are allowed.
@@ -63,10 +67,6 @@ attributes: {
     "a" => ["href"],
     "img" => ["src"],
 },
-
-# HTML elements to allow. By default, no elements are allowed (which means
-# that all HTML will be stripped).
-elements: ["a", "b", "img", ],
 
 # URL handling protocols to allow in specific attributes. By default, no
 # protocols are allowed. Use :relative in place of a protocol if you want
