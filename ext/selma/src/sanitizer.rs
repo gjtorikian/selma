@@ -288,7 +288,15 @@ impl SelmaSanitizer {
                         escapist::escape_html(&mut buf, unescaped_attr_val.to_string().as_str());
                     };
 
-                    element.set_attribute(attr_name, &buf);
+                    match element.set_attribute(attr_name, &buf) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            return Err(magnus::Error::new(
+                                exception::runtime_error(),
+                                format!("Unable to change {attr_name:?}: {err:?}"),
+                            ));
+                        }
+                    }
                 }
             }
         }

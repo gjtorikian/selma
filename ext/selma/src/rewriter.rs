@@ -145,7 +145,7 @@ impl SelmaRewriter {
         let _: () = args.trailing;
         let _: () = args.block;
 
-        let kw = scan_args::get_kwargs::<
+        let kwargs = scan_args::get_kwargs::<
             _,
             (),
             (
@@ -154,7 +154,7 @@ impl SelmaRewriter {
             ),
             (),
         >(args.keywords, &[], &["sanitizer", "handlers"])?;
-        let (rb_sanitizer, rb_handlers) = kw.optional;
+        let (rb_sanitizer, rb_handlers) = kwargs.optional;
 
         Ok((rb_sanitizer, rb_handlers))
     }
