@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
 use crate::native_ref_wrap::NativeRefWrap;
-use lol_html::html_content::{ContentType, Element};
-use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Symbol};
+use lol_html::html_content::Element;
+use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Value};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,
@@ -106,73 +104,67 @@ impl SelmaHTMLElement {
         Ok(array)
     }
 
-    fn append(&self, text_to_append: String, content_type: Symbol) -> Result<(), Error> {
+    fn before(&self, args: &[Value]) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let text_str = text_to_append.as_str();
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
 
-        let content_type = Self::find_content_type(content_type);
-
-        element.append(text_str, content_type);
+        element.before(&text_str, content_type);
 
         Ok(())
     }
 
-    fn wrap(
-        &self,
-        start_text: String,
-        end_text: String,
-        content_type: Symbol,
-    ) -> Result<(), Error> {
+    fn after(&self, args: &[Value]) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let before_content_type = Self::find_content_type(content_type);
-        let after_content_type = Self::find_content_type(content_type);
-        element.before(&start_text, before_content_type);
-        element.after(&end_text, after_content_type);
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
+
+        element.after(&text_str, content_type);
 
         Ok(())
     }
 
-    fn set_inner_content(&self, text_to_set: String, content_type: Symbol) -> Result<(), Error> {
+    fn append(&self, args: &[Value]) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
 
-        let text_str = text_to_set.as_str();
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
 
-        let content_type = Self::find_content_type(content_type);
-
-        element.set_inner_content(text_str, content_type);
+        element.append(&text_str, content_type);
 
         Ok(())
     }
 
-    fn find_content_type(content_type: Symbol) -> ContentType {
-        match content_type.name() {
-            Ok(name) => match name {
-                Cow::Borrowed("as_text") => ContentType::Text,
-                Cow::Borrowed("as_html") => ContentType::Html,
-                _ => Err(Error::new(
-                    exception::runtime_error(),
-                    format!("unknown symbol `{name:?}`"),
-                ))
-                .unwrap(),
-            },
-            Err(err) => Err(Error::new(
-                exception::runtime_error(),
-                format!("Could not unwrap symbol: {err:?}"),
-            ))
-            .unwrap(),
-        }
+    fn set_inner_content(&self, args: &[Value]) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+        let element = binding.element.get_mut().unwrap();
+
+        let (inner_content, content_type) = match crate::scan_text_args(args) {
+            Ok((inner_content, content_type)) => (inner_content, content_type),
+            Err(err) => return Err(err),
+        };
+
+        element.set_inner_content(&inner_content, content_type);
+
+        Ok(())
     }
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_element = c_html
         .define_class("Element", Default::default())
-        .expect("cannot find class Selma::Element");
+        .expect("cannot find class Selma::HTML::Element");
 
     c_element.define_method("tag_name", method!(SelmaHTMLElement::tag_name, 0))?;
     c_element.define_method("[]", method!(SelmaHTMLElement::get_attribute, 1))?;
@@ -184,11 +176,12 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
     c_element.define_method("attributes", method!(SelmaHTMLElement::get_attributes, 0))?;
     c_element.define_method("ancestors", method!(SelmaHTMLElement::get_ancestors, 0))?;
 
-    c_element.define_method("append", method!(SelmaHTMLElement::append, 2))?;
-    c_element.define_method("wrap", method!(SelmaHTMLElement::wrap, 3))?;
+    c_element.define_method("before", method!(SelmaHTMLElement::before, -1))?;
+    c_element.define_method("after", method!(SelmaHTMLElement::after, -1))?;
+    c_element.define_method("append", method!(SelmaHTMLElement::append, -1))?;
     c_element.define_method(
         "set_inner_content",
-        method!(SelmaHTMLElement::set_inner_content, 2),
+        method!(SelmaHTMLElement::set_inner_content, -1),
     )?;
 
     Ok(())

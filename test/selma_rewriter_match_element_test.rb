@@ -130,7 +130,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     end
 
     def handle_element(element)
-      element.append("<em>Gee!</em>", :as_html)
+      element.append("<em>Gee!</em>", as: :html)
     end
   end
 
@@ -149,7 +149,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     end
 
     def handle_element(element)
-      element.append("<em>Gee!</em>", :as_text)
+      element.append("<em>Gee!</em>", as: :text)
     end
   end
 
@@ -160,7 +160,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     assert_equal("<strong>Wow!&lt;em&gt;Gee!&lt;/em&gt;</strong>", modified_doc)
   end
 
-  class WrapText
+  class BeforeText
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
     def selector
@@ -168,15 +168,34 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     end
 
     def handle_element(element)
-      element.wrap(%(<a href="www.yetto.app.com">), "</a>", :as_html)
+      element.before("<span>wow?</span>", as: :html)
     end
   end
 
-  def test_that_it_wraps_as_html
+  def test_that_it_adds_text_before_as_html
     frag = "<strong>Wow!</strong>"
-    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [WrapText.new]).rewrite(frag)
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [BeforeText.new]).rewrite(frag)
 
-    assert_equal(%(<a href="www.yetto.app.com"><strong>Wow!</strong></a>), modified_doc)
+    assert_equal(%(<span>wow?</span><strong>Wow!</strong>), modified_doc)
+  end
+
+  class AfterText
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.after("<span>ok?</span>", as: :html)
+    end
+  end
+
+  def test_that_it_adds_text_after_as_html
+    frag = "<strong>Wow!</strong>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AfterText.new]).rewrite(frag)
+
+    assert_equal(%(<strong>Wow!</strong><span>ok?</span>), modified_doc)
   end
 
   class SetInnerContent
@@ -187,7 +206,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     end
 
     def handle_element(element)
-      element.set_inner_content("Gee!", :as_text)
+      element.set_inner_content("Gee!", as: :text)
     end
   end
 

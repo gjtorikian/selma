@@ -6,8 +6,6 @@ use lol_html::{
 };
 use magnus::{class, function, method, scan_args, Module, Object, RArray, RHash, RModule, Value};
 
-use crate::tags::Tag;
-
 #[derive(Clone, Debug)]
 struct ElementSanitizer {
     allowed_attrs: Vec<String>,
@@ -18,7 +16,7 @@ struct ElementSanitizer {
 
 #[derive(Clone, Debug)]
 pub struct Sanitizer {
-    flags: [u8; Tag::TAG_COUNT],
+    flags: [u8; crate::tags::Tag::TAG_COUNT],
     allowed_attrs: Vec<String>,
     allowed_classes: Vec<String>,
     element_sanitizers: HashMap<String, ElementSanitizer>,
@@ -50,7 +48,7 @@ impl SelmaSanitizer {
         };
 
         let mut element_sanitizers = HashMap::new();
-        Tag::html_tags().iter().for_each(|html_tag| {
+        crate::tags::Tag::html_tags().iter().for_each(|html_tag| {
             let es = ElementSanitizer {
                 allowed_attrs: vec![],
                 allowed_classes: vec![],
@@ -58,11 +56,14 @@ impl SelmaSanitizer {
 
                 protocol_sanitizers: HashMap::new(),
             };
-            element_sanitizers.insert(Tag::element_name_from_enum(html_tag).to_string(), es);
+            element_sanitizers.insert(
+                crate::tags::Tag::element_name_from_enum(html_tag).to_string(),
+                es,
+            );
         });
 
         Ok(Self(std::cell::RefCell::new(Sanitizer {
-            flags: [0; Tag::TAG_COUNT],
+            flags: [0; crate::tags::Tag::TAG_COUNT],
             allowed_attrs: vec![],
             allowed_classes: vec![],
             element_sanitizers,
@@ -82,7 +83,7 @@ impl SelmaSanitizer {
 
     /// Toggle a sanitizer option on or off.
     fn set_flag(&self, tag_name: String, flag: u8, set: bool) {
-        let tag = Tag::tag_from_tag_name(tag_name.as_str());
+        let tag = crate::tags::Tag::tag_from_tag_name(tag_name.as_str());
         if set {
             self.0.borrow_mut().flags[tag.index] |= flag;
         } else {
@@ -93,13 +94,19 @@ impl SelmaSanitizer {
     /// Toggles all sanitization options on or off.
     fn set_all_flags(&self, flag: u8, set: bool) {
         if set {
-            Tag::html_tags().iter().enumerate().for_each(|(iter, _)| {
-                self.0.borrow_mut().flags[iter] |= flag;
-            });
+            crate::tags::Tag::html_tags()
+                .iter()
+                .enumerate()
+                .for_each(|(iter, _)| {
+                    self.0.borrow_mut().flags[iter] |= flag;
+                });
         } else {
-            Tag::html_tags().iter().enumerate().for_each(|(iter, _)| {
-                self.0.borrow_mut().flags[iter] &= flag;
-            });
+            crate::tags::Tag::html_tags()
+                .iter()
+                .enumerate()
+                .for_each(|(iter, _)| {
+                    self.0.borrow_mut().flags[iter] &= flag;
+                });
         }
     }
 
@@ -111,8 +118,8 @@ impl SelmaSanitizer {
 
     pub fn escape_tagfilter(&self, e: &mut Element) -> bool {
         if self.0.borrow().escape_tagfilter {
-            let tag = Tag::tag_from_element(e);
-            if Tag::is_tag_escapeworthy(tag) {
+            let tag = crate::tags::Tag::tag_from_element(e);
+            if crate::tags::Tag::is_tag_escapeworthy(tag) {
                 e.remove();
                 return true;
             }
@@ -231,7 +238,7 @@ impl SelmaSanitizer {
 
     pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), AttributeNameError> {
         let binding = self.0.borrow_mut();
-        let tag = Tag::tag_from_element(element);
+        let tag = crate::tags::Tag::tag_from_element(element);
         let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
 
         // FIXME: This is a hack to get around the fact that we can't borrow
@@ -273,7 +280,7 @@ impl SelmaSanitizer {
             } else {
                 // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
                 // since output is always UTF-8.
-                if Tag::is_meta(tag) {
+                if crate::tags::Tag::is_meta(tag) {
                     if attr_name == "charset" && unescaped_attr_val != "utf-8" {
                         match element.set_attribute(attr_name, "utf-8") {
                             Ok(_) => {}
@@ -441,20 +448,20 @@ impl SelmaSanitizer {
     }
 
     pub fn allow_element(&self, element: &mut Element) -> bool {
-        let tag = Tag::tag_from_element(element);
+        let tag = crate::tags::Tag::tag_from_element(element);
         let flags: u8 = self.0.borrow().flags[tag.index];
 
         (flags & Self::SELMA_SANITIZER_ALLOW) == 0
     }
 
     pub fn try_remove_element(&self, element: &mut Element) -> bool {
-        let tag = Tag::tag_from_element(element);
+        let tag = crate::tags::Tag::tag_from_element(element);
         let flags: u8 = self.0.borrow().flags[tag.index];
 
         let should_remove = !element.removed() && self.allow_element(element);
 
         if should_remove {
-            if Tag::has_text_content(tag) {
+            if crate::tags::Tag::has_text_content(tag) {
                 Self::remove_element(
                     element,
                     tag.self_closing,
@@ -467,7 +474,7 @@ impl SelmaSanitizer {
             Self::check_if_end_tag_needs_removal(element);
         } else {
             // anything in <iframe> must be removed, if it's kept
-            if Tag::is_iframe(tag) {
+            if crate::tags::Tag::is_iframe(tag) {
                 if self.0.borrow().flags[tag.index] != 0 {
                     element.set_inner_content(" ", ContentType::Text);
                 } else {
@@ -499,14 +506,14 @@ impl SelmaSanitizer {
     }
 
     pub fn force_remove_element(&self, element: &mut Element) {
-        let tag = Tag::tag_from_element(element);
+        let tag = crate::tags::Tag::tag_from_element(element);
         let self_closing = tag.self_closing;
         Self::remove_element(element, self_closing, Self::SELMA_SANITIZER_REMOVE_CONTENTS);
         Self::check_if_end_tag_needs_removal(element);
     }
 
     fn check_if_end_tag_needs_removal(element: &mut Element) {
-        if element.removed() && !Tag::tag_from_element(element).self_closing {
+        if element.removed() && !crate::tags::Tag::tag_from_element(element).self_closing {
             element
                 .on_end_tag(move |end| {
                     Self::remove_end_tag(end);

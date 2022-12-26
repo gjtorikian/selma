@@ -3,6 +3,10 @@
 module Selma
   class Sanitizer
     module Config
+      # although there are many more protocol types, eg., ftp, xmpp, etc.,
+      # these are the only ones that are allowed by default
+      VALID_PROTOCOLS = ["http", "https", "mailto", :relative]
+
       DEFAULT = freeze_config(
         # Whether or not to allow HTML comments. Allowing comments is strongly
         # discouraged, since IE allows script execution within conditional

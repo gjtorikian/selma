@@ -9,9 +9,11 @@ pub fn init(m_selma: RModule) -> Result<(), Error> {
 
     element::init(c_html).expect("cannot define Selma::HTML::Element class");
     end_tag::init(c_html).expect("cannot define Selma::HTML::EndTag class");
+    text_chunk::init(c_html).expect("cannot define Selma::HTML::TextChunk class");
 
     Ok(())
 }
 
 pub mod element;
 pub mod end_tag;
+pub mod text_chunk;

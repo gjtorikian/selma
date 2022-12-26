@@ -192,14 +192,17 @@ impl Tag {
     /// Is this tag something which needs to be removed?
     pub fn is_tag_escapeworthy(tag: Tag) -> bool {
         tag.index == HTMLTag::TITLE as usize
-            || tag.index == HTMLTag::TEXTAREA as usize
-            || tag.index == HTMLTag::STYLE as usize
-            || tag.index == HTMLTag::XMP as usize
             || tag.index == HTMLTag::IFRAME as usize
+            || tag.index == HTMLTag::MATH as usize
             || tag.index == HTMLTag::NOEMBED as usize
             || tag.index == HTMLTag::NOFRAMES as usize
-            || tag.index == HTMLTag::SCRIPT as usize
+            || tag.index == HTMLTag::NOSCRIPT as usize
             || tag.index == HTMLTag::PLAINTEXT as usize
+            || tag.index == HTMLTag::SCRIPT as usize
+            || tag.index == HTMLTag::STYLE as usize
+            || tag.index == HTMLTag::SVG as usize
+            || tag.index == HTMLTag::TEXTAREA as usize
+            || tag.index == HTMLTag::XMP as usize
     }
 
     pub const ESCAPEWORTHY_TAGS_CSS: &str =
