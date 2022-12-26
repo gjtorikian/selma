@@ -177,9 +177,9 @@ dependencies = [
 
 [[package]]
 name = "escapist"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a692e1ee34f837da2ac0b188c105dcc638c3ee639305801ea7e6c152b3e1fe33"
+checksum = "a91c7e59d7e5afa56d8be4dc7e27ea123dcd23d38b4b6a6497a05cddd95844a2"
 dependencies = [
  "entities",
 ]
