@@ -162,26 +162,24 @@ impl SelmaRewriter {
     /// Perform HTML rewrite sequence.
     fn rewrite(&self, html: String) -> Result<String, magnus::Error> {
         let sanitized_html = match &self.0.borrow().sanitizer {
-            None => html,
+            None => Ok(html),
             Some(sanitizer) => {
                 // due to malicious html crafting
                 // (e.g. <<foo>script>...</script>, or <div <!-- comment -->> as in tests),
                 // we need to run sanitization several times to truly remove unwanted tags,
                 // because lol-html happily accepts this garbage (by design?)
-                let sanitized_html = Self::perform_sanitization(sanitizer, &html).unwrap();
-
-                String::from_utf8(sanitized_html).unwrap()
+                match Self::perform_sanitization(sanitizer, &html) {
+                    Ok(sanitized_html) => String::from_utf8(sanitized_html),
+                    Err(err) => return Err(err),
+                }
             }
         };
         let binding = self.0.borrow_mut();
         let handlers = &binding.handlers;
 
-        match Self::perform_handler_rewrite(self, handlers, sanitized_html) {
+        match Self::perform_handler_rewrite(self, handlers, sanitized_html.unwrap()) {
             Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
-            Err(err) => Err(magnus::Error::new(
-                exception::runtime_error(),
-                format!("{err:?}"),
-            )),
+            Err(err) => Err(err),
         }
     }
 
@@ -212,9 +210,10 @@ impl SelmaRewriter {
                         if el.removed() {
                             return Ok(());
                         }
-                        sanitizer.sanitize_attributes(el);
-
-                        Ok(())
+                        match sanitizer.sanitize_attributes(el) {
+                            Ok(_) => Ok(()),
+                            Err(err) => Err(err.to_string().into()),
+                        }
                     })],
                     // TODO: allow for MemorySettings to be defined
                     ..Settings::default()
@@ -341,7 +340,7 @@ impl SelmaRewriter {
                     let mut stack = closure_element_stack.as_ref().borrow_mut();
                     stack.pop();
                     Ok(())
-                });
+                })?;
                 Ok(())
             }));
         });
@@ -375,13 +374,14 @@ impl SelmaRewriter {
     ) -> Result<(), magnus::Error> {
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
+            // TODO: error here is an "EndTagError"
             element.on_end_tag(move |end_tag| {
                 let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
 
-                rb_handler
-                    .funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,))
-                    .unwrap();
-                Ok(())
+                match rb_handler.funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,)) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(err.to_string().into()),
+                }
             });
         }
 
@@ -390,10 +390,7 @@ impl SelmaRewriter {
             rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
         match rb_result {
             Ok(_) => Ok(()),
-            Err(err) => Err(magnus::Error::new(
-                exception::runtime_error(),
-                format!("{err:?}"),
-            )),
+            Err(err) => Err(err),
         }
     }
 

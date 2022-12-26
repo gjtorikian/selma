@@ -1,10 +1,10 @@
 use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
 
-use lol_html::html_content::{Comment, ContentType, Doctype, Element, EndTag};
-use magnus::{
-    class, exception, function, method, scan_args, Error, Module, Object, RArray, RHash, RModule,
-    Value,
+use lol_html::{
+    errors::AttributeNameError,
+    html_content::{Comment, ContentType, Doctype, Element, EndTag},
 };
+use magnus::{class, function, method, scan_args, Module, Object, RArray, RHash, RModule, Value};
 
 use crate::tags::Tag;
 
@@ -39,7 +39,7 @@ impl SelmaSanitizer {
     const SELMA_SANITIZER_REMOVE_CONTENTS: u8 = (1 << 2);
     const SELMA_SANITIZER_WRAP_WHITESPACE: u8 = (1 << 3);
 
-    pub fn new(arguments: &[Value]) -> Result<Self, Error> {
+    pub fn new(arguments: &[Value]) -> Result<Self, magnus::Error> {
         let args = scan_args::scan_args::<(), (Option<RHash>,), (), (), (), ()>(arguments)?;
         let (opt_config,): (Option<RHash>,) = args.optional;
 
@@ -74,7 +74,7 @@ impl SelmaSanitizer {
         })))
     }
 
-    fn get_config(&self) -> Result<RHash, Error> {
+    fn get_config(&self) -> Result<RHash, magnus::Error> {
         let binding = self.0.borrow();
 
         Ok(binding.config)
@@ -229,7 +229,7 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), magnus::Error> {
+    pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), AttributeNameError> {
         let binding = self.0.borrow_mut();
         let tag = Tag::tag_from_element(element);
         let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
@@ -255,13 +255,20 @@ impl SelmaSanitizer {
             let x = escapist::unescape_html(trimmed.as_bytes());
             let unescaped_attr_val = String::from_utf8_lossy(&x).to_string();
 
-            if !Self::should_keep_attribute(
+            let should_keep_attrubute = match Self::should_keep_attribute(
                 &binding,
                 element,
                 element_sanitizer,
                 attr_name,
                 &unescaped_attr_val,
             ) {
+                Ok(should_keep) => should_keep,
+                Err(e) => {
+                    return Err(e);
+                }
+            };
+
+            if !should_keep_attrubute {
                 element.remove_attribute(attr_name);
             } else {
                 // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
@@ -270,11 +277,8 @@ impl SelmaSanitizer {
                     if attr_name == "charset" && unescaped_attr_val != "utf-8" {
                         match element.set_attribute(attr_name, "utf-8") {
                             Ok(_) => {}
-                            Err(_) => {
-                                return Err(magnus::Error::new(
-                                    exception::runtime_error(),
-                                    format!("Unable to change {attr_name:?}"),
-                                ));
+                            Err(err) => {
+                                return Err(err);
                             }
                         }
                     }
@@ -287,7 +291,12 @@ impl SelmaSanitizer {
                         escapist::escape_html(&mut buf, unescaped_attr_val.as_str());
                     };
 
-                    element.set_attribute(attr_name, &buf);
+                    match element.set_attribute(attr_name, &buf) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
                 }
             }
         }
@@ -312,7 +321,7 @@ impl SelmaSanitizer {
         element_sanitizer: &ElementSanitizer,
         attr_name: &String,
         attr_val: &String,
-    ) -> bool {
+    ) -> Result<bool, AttributeNameError> {
         let mut allowed: bool = false;
         let element_allowed_attrs = element_sanitizer.allowed_attrs.contains(attr_name);
         let sanitizer_allowed_attrs = binding.allowed_attrs.contains(attr_name);
@@ -326,7 +335,7 @@ impl SelmaSanitizer {
         }
 
         if !allowed {
-            return false;
+            return Ok(false);
         }
 
         let protocol_sanitizer_values = element_sanitizer.protocol_sanitizers.get(attr_name);
@@ -334,32 +343,29 @@ impl SelmaSanitizer {
             None => {
                 // has a protocol, but no sanitization list
                 if !attr_val.is_empty() && Self::has_protocol(attr_val) {
-                    return false;
+                    return Ok(false);
                 }
             }
             Some(protocol_sanitizer_values) => {
                 if !attr_val.is_empty()
                     && !Self::has_allowed_protocol(protocol_sanitizer_values, attr_val)
                 {
-                    return false;
+                    return Ok(false);
                 }
             }
         }
 
-        if attr_name == "class"
-            && !Self::sanitize_class_attribute(
+        if attr_name == "class" {
+            return Self::sanitize_class_attribute(
                 binding,
                 element,
                 element_sanitizer,
                 attr_name,
                 attr_val,
-            )
-            .unwrap()
-        {
-            return false;
+            );
         }
 
-        true
+        Ok(true)
     }
 
     fn has_protocol(attr_val: &str) -> bool {
@@ -402,7 +408,7 @@ impl SelmaSanitizer {
         element_sanitizer: &ElementSanitizer,
         attr_name: &str,
         attr_val: &str,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, lol_html::errors::AttributeNameError> {
         let allowed_global = &binding.allowed_classes;
 
         let mut valid_classes: Vec<String> = vec![];
@@ -430,10 +436,7 @@ impl SelmaSanitizer {
 
         match element.set_attribute(attr_name, valid_classes.join(" ").as_str()) {
             Ok(_) => Ok(true),
-            Err(err) => Err(Error::new(
-                exception::runtime_error(),
-                format!("AttributeNameError: {err:?}"),
-            )),
+            Err(err) => Err(err),
         }
     }
 
@@ -532,7 +535,7 @@ impl SelmaSanitizer {
     }
 }
 
-pub fn init(m_selma: RModule) -> Result<(), Error> {
+pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
     let c_sanitizer = m_selma.define_class("Sanitizer", Default::default())?;
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
