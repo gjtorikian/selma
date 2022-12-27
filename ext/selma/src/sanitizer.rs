@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, cell::RefMut, collections::HashMap};
+use std::{borrow::BorrowMut, collections::HashMap};
 
 use lol_html::{
     errors::AttributeNameError,
@@ -12,6 +12,18 @@ struct ElementSanitizer {
     required_attrs: Vec<String>,
     allowed_classes: Vec<String>,
     protocol_sanitizers: HashMap<String, Vec<String>>,
+}
+
+impl Default for ElementSanitizer {
+    fn default() -> Self {
+        ElementSanitizer {
+            allowed_attrs: vec![],
+            allowed_classes: vec![],
+            required_attrs: vec![],
+
+            protocol_sanitizers: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -49,13 +61,7 @@ impl SelmaSanitizer {
 
         let mut element_sanitizers = HashMap::new();
         crate::tags::Tag::html_tags().iter().for_each(|html_tag| {
-            let es = ElementSanitizer {
-                allowed_attrs: vec![],
-                allowed_classes: vec![],
-                required_attrs: vec![],
-
-                protocol_sanitizers: HashMap::new(),
-            };
+            let es = ElementSanitizer::default();
             element_sanitizers.insert(
                 crate::tags::Tag::element_name_from_enum(html_tag).to_string(),
                 es,
@@ -169,7 +175,8 @@ impl SelmaSanitizer {
             let allowed_attrs = &mut binding.allowed_attrs;
             Self::set_allowed(allowed_attrs, &attr_name, allow);
         } else {
-            let element_sanitizer = Self::get_mut_element_sanitizer(&mut binding, &element_name);
+            let element_sanitizers = &mut binding.element_sanitizers;
+            let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
 
             element_sanitizer.allowed_attrs.push(attr_name);
         }
@@ -183,7 +190,8 @@ impl SelmaSanitizer {
             let allowed_classes = &mut binding.allowed_classes;
             Self::set_allowed(allowed_classes, &class_name, allow);
         } else {
-            let element_sanitizer = Self::get_mut_element_sanitizer(&mut binding, &element_name);
+            let element_sanitizers = &mut binding.element_sanitizers;
+            let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
 
             let allowed_classes = element_sanitizer.allowed_classes.borrow_mut();
             Self::set_allowed(allowed_classes, &class_name, allow)
@@ -194,9 +202,10 @@ impl SelmaSanitizer {
     fn set_allowed_protocols(&self, element_name: String, attr_name: String, allow_list: RArray) {
         let mut binding = self.0.borrow_mut();
 
-        let element_sanitizer = Self::get_mut_element_sanitizer(&mut binding, &element_name);
+        let element_sanitizers = &mut binding.element_sanitizers;
+        let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
 
-        let protocol_sanitizers = element_sanitizer.protocol_sanitizers.borrow_mut();
+        let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers.borrow_mut();
 
         for opt_allowed_protocol in allow_list.each() {
             let allowed_protocol = opt_allowed_protocol.unwrap();
@@ -237,9 +246,15 @@ impl SelmaSanitizer {
     }
 
     pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), AttributeNameError> {
-        let binding = self.0.borrow_mut();
         let tag = crate::tags::Tag::tag_from_element(element);
-        let element_sanitizer = Self::get_element_sanitizer(&binding, &element.tag_name());
+        let tag_name = &element.tag_name();
+        let element_sanitizer = {
+            let mut binding = self.0.borrow_mut();
+            let element_sanitizers = &mut binding.element_sanitizers;
+            Self::get_element_sanitizer(element_sanitizers, tag_name).clone()
+        };
+
+        let binding = self.0.borrow();
 
         // FIXME: This is a hack to get around the fact that we can't borrow
         let attribute_map: HashMap<String, String> = element
@@ -265,7 +280,7 @@ impl SelmaSanitizer {
             let should_keep_attrubute = match Self::should_keep_attribute(
                 &binding,
                 element,
-                element_sanitizer,
+                &element_sanitizer,
                 attr_name,
                 &unescaped_attr_val,
             ) {
@@ -323,7 +338,7 @@ impl SelmaSanitizer {
     }
 
     fn should_keep_attribute(
-        binding: &RefMut<Sanitizer>,
+        binding: &Sanitizer,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
         attr_name: &String,
@@ -410,7 +425,7 @@ impl SelmaSanitizer {
     }
 
     fn sanitize_class_attribute(
-        binding: &RefMut<Sanitizer>,
+        binding: &Sanitizer,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
         attr_name: &str,
@@ -528,17 +543,12 @@ impl SelmaSanitizer {
     }
 
     fn get_element_sanitizer<'a>(
-        binding: &'a RefMut<Sanitizer>,
-        element_name: &str,
-    ) -> &'a ElementSanitizer {
-        binding.element_sanitizers.get(element_name).unwrap()
-    }
-
-    fn get_mut_element_sanitizer<'a>(
-        binding: &'a mut Sanitizer,
+        element_sanitizers: &'a mut HashMap<String, ElementSanitizer>,
         element_name: &str,
     ) -> &'a mut ElementSanitizer {
-        binding.element_sanitizers.get_mut(element_name).unwrap()
+        element_sanitizers
+            .entry(element_name.to_string())
+            .or_insert_with(ElementSanitizer::default)
     }
 }
 

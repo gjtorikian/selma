@@ -54,6 +54,34 @@ impl SelmaHTMLTextChunk {
         }
     }
 
+    fn before(&self, args: &[Value]) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+        let text_chunk = binding.text_chunk.get_mut().unwrap();
+
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
+
+        text_chunk.before(&text_str, content_type);
+
+        Ok(())
+    }
+
+    fn after(&self, args: &[Value]) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+        let text_chunk = binding.text_chunk.get_mut().unwrap();
+
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
+
+        text_chunk.after(&text_str, content_type);
+
+        Ok(())
+    }
+
     fn replace(&self, args: &[Value]) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
         let text_chunk = binding.text_chunk.get_mut().unwrap();
@@ -77,6 +105,8 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
     c_text_chunk.define_method("to_s", method!(SelmaHTMLTextChunk::to_s, 0))?;
     c_text_chunk.define_method("content", method!(SelmaHTMLTextChunk::to_s, 0))?;
     c_text_chunk.define_method("text_type", method!(SelmaHTMLTextChunk::text_type, 0))?;
+    c_text_chunk.define_method("before", method!(SelmaHTMLTextChunk::before, -1))?;
+    c_text_chunk.define_method("after", method!(SelmaHTMLTextChunk::after, -1))?;
     c_text_chunk.define_method("replace", method!(SelmaHTMLTextChunk::replace, -1))?;
 
     Ok(())
