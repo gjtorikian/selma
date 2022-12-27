@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.5](https://github.com/gjtorikian/selma/tree/v0.0.5) (2022-12-27)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.4...v0.0.5)
+
+**Merged pull requests:**
+
+- Method signature changes [\#7](https://github.com/gjtorikian/selma/pull/7) ([gjtorikian](https://github.com/gjtorikian))
+
 ## [v0.0.4](https://github.com/gjtorikian/selma/tree/v0.0.4) (2022-12-26)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.3...v0.0.4)
