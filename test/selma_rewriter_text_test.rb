@@ -64,6 +64,44 @@ class SelmaRewriterTextTest < Minitest::Test
     assert_equal("<div>MEOW!!</div><span>Wow!</span><a>MEOW!!</a>", modified_doc)
   end
 
+  class AddTextBefore
+    SELECTOR = Selma::Selector.new(match_text_within: "div")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.before("MEOW! ", as: :text)
+    end
+  end
+
+  def test_that_it_adds_text_before
+    frag = "<div>Wow!</div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AddTextBefore.new]).rewrite(frag)
+
+    assert_equal("<div>MEOW! Wow!</div>", modified_doc)
+  end
+
+  class AddTextAfter
+    SELECTOR = Selma::Selector.new(match_text_within: "div")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.after(" MEOW!", as: :text)
+    end
+  end
+
+  def test_that_it_adds_text_after
+    frag = "<div>Wow!</div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AddTextAfter.new]).rewrite(frag)
+
+    assert_equal("<div>Wow! MEOW!</div>", modified_doc)
+  end
+
   class TextRewriteAndMatchElements
     SELECTOR = Selma::Selector.new(match_element: "div", match_text_within: "div, p, a")
 

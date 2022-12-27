@@ -36,6 +36,48 @@ impl SelmaHTMLElement {
         }
     }
 
+    fn set_tag_name(&self, name: String) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+
+        if let Ok(element) = binding.element.get_mut() {
+            match element.set_tag_name(&name) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::new(exception::runtime_error(), format!("{err:?}"))),
+            }
+        } else {
+            Err(Error::new(
+                exception::runtime_error(),
+                "`set_tag_name` is not available",
+            ))
+        }
+    }
+
+    fn is_self_closing(&self) -> Result<bool, Error> {
+        let binding = self.0.borrow();
+
+        if let Ok(e) = binding.element.get() {
+            Ok(e.is_self_closing())
+        } else {
+            Err(Error::new(
+                exception::runtime_error(),
+                "`is_self_closing` is not available",
+            ))
+        }
+    }
+
+    fn has_attribute(&self, attr: String) -> Result<bool, Error> {
+        let binding = self.0.borrow();
+
+        if let Ok(e) = binding.element.get() {
+            Ok(e.has_attribute(&attr))
+        } else {
+            Err(Error::new(
+                exception::runtime_error(),
+                "`is_self_closing` is not available",
+            ))
+        }
+    }
+
     fn get_attribute(&self, attr: String) -> Option<String> {
         let binding = self.0.borrow();
         let element = binding.element.get();
@@ -132,6 +174,20 @@ impl SelmaHTMLElement {
         Ok(())
     }
 
+    fn prepend(&self, args: &[Value]) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+        let element = binding.element.get_mut().unwrap();
+
+        let (text_str, content_type) = match crate::scan_text_args(args) {
+            Ok((text_str, content_type)) => (text_str, content_type),
+            Err(err) => return Err(err),
+        };
+
+        element.prepend(&text_str, content_type);
+
+        Ok(())
+    }
+
     fn append(&self, args: &[Value]) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
         let element = binding.element.get_mut().unwrap();
@@ -167,17 +223,27 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
         .expect("cannot find class Selma::HTML::Element");
 
     c_element.define_method("tag_name", method!(SelmaHTMLElement::tag_name, 0))?;
+    c_element.define_method("tag_name=", method!(SelmaHTMLElement::set_tag_name, 1))?;
+    c_element.define_method(
+        "self_closing?",
+        method!(SelmaHTMLElement::is_self_closing, 0),
+    )?;
     c_element.define_method("[]", method!(SelmaHTMLElement::get_attribute, 1))?;
     c_element.define_method("[]=", method!(SelmaHTMLElement::set_attribute, 2))?;
     c_element.define_method(
         "remove_attribute",
         method!(SelmaHTMLElement::remove_attribute, 1),
     )?;
+    c_element.define_method(
+        "has_attribute?",
+        method!(SelmaHTMLElement::has_attribute, 1),
+    )?;
     c_element.define_method("attributes", method!(SelmaHTMLElement::get_attributes, 0))?;
     c_element.define_method("ancestors", method!(SelmaHTMLElement::get_ancestors, 0))?;
 
     c_element.define_method("before", method!(SelmaHTMLElement::before, -1))?;
     c_element.define_method("after", method!(SelmaHTMLElement::after, -1))?;
+    c_element.define_method("prepend", method!(SelmaHTMLElement::prepend, -1))?;
     c_element.define_method("append", method!(SelmaHTMLElement::append, -1))?;
     c_element.define_method(
         "set_inner_content",

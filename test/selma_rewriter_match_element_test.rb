@@ -237,4 +237,69 @@ class SelmaRewriterMatchElementTest < Minitest::Test
       Selma::Rewriter.new(sanitizer: nil, handlers: [RaiseError.new]).rewrite(frag)
     end
   end
+
+  class SetTagName
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.tag_name = "bold"
+    end
+  end
+
+  def test_that_it_sets_tag_name
+    frag = "<strong>Wow!</strong>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [SetTagName.new]).rewrite(frag)
+
+    assert_equal(%(<bold>Wow!</bold>), modified_doc)
+  end
+
+  class GetIsSelfClosing < Minitest::Test
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    # rubocop:disable Lint/MissingSuper
+    def initialize
+      @assertions = 0
+    end
+    # rubocop:enable Lint/MissingSuper
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      assert_equal("strong", element.self_closing?)
+    end
+  end
+
+  def test_that_it_gets_self_closing
+    frag = "<strong>Wow!</strong>"
+    Selma::Rewriter.new(sanitizer: nil, handlers: [GetEmptyAncestors.new]).rewrite(frag)
+  end
+
+  class GetHasAttr < Minitest::Test
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    # rubocop:disable Lint/MissingSuper
+    def initialize
+      @assertions = 0
+    end
+    # rubocop:enable Lint/MissingSuper
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      assert(element.has_attribute?("class"))
+    end
+  end
+
+  def test_that_it_has_attr
+    frag = %(<strong class="urgent">Wow!</strong>)
+    Selma::Rewriter.new(sanitizer: nil, handlers: [GetHasAttr.new]).rewrite(frag)
+  end
 end
