@@ -14,6 +14,18 @@ struct ElementSanitizer {
     protocol_sanitizers: HashMap<String, Vec<String>>,
 }
 
+impl Default for ElementSanitizer {
+    fn default() -> Self {
+        ElementSanitizer {
+            allowed_attrs: vec![],
+            allowed_classes: vec![],
+            required_attrs: vec![],
+
+            protocol_sanitizers: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Sanitizer {
     flags: [u8; crate::tags::Tag::TAG_COUNT],
@@ -49,13 +61,7 @@ impl SelmaSanitizer {
 
         let mut element_sanitizers = HashMap::new();
         crate::tags::Tag::html_tags().iter().for_each(|html_tag| {
-            let es = ElementSanitizer {
-                allowed_attrs: vec![],
-                allowed_classes: vec![],
-                required_attrs: vec![],
-
-                protocol_sanitizers: HashMap::new(),
-            };
+            let es = ElementSanitizer::default();
             element_sanitizers.insert(
                 crate::tags::Tag::element_name_from_enum(html_tag).to_string(),
                 es,

@@ -46,6 +46,20 @@ module Selma
         Selma::Rewriter.new(sanitizer: nil).rewrite(html)
       end
     end
+    focus
+    def test_can_handle_empty_sanitizer
+      frag = <<~FRAG
+        <svg height="100" width="100">
+        <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
+        </svg>
+      FRAG
+
+      hash = { elements: ["svg", "circle"] }
+      sanitizer = Selma::Sanitizer.new(hash)
+      result = Selma::Rewriter.new(sanitizer: sanitizer).rewrite(frag)
+
+      assert_equal("<b>foo</b>", result)
+    end
 
     describe "#fragment" do
       def setup
