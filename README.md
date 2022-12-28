@@ -24,23 +24,27 @@ Or install it yourself as:
 
 ## Usage
 
-Selma can perform two different actions:
+Selma can perform two different actions, either independently or together:
 
 - Sanitize HTML, through a [Sanitize](https://github.com/rgrove/sanitize)-like allowlist syntax; and
-- Select HTML using CSS rules, and manipulate elements and text
+- Select HTML using CSS rules, and manipulate elements and text nodes along the way.
 
-The basic API for Selma looks like this:
+It does this through two kwargsL `sanitizer` and `handlers`. The basic API for Selma looks like this:
 
 ```ruby
-rewriter = Selma::Rewriter.new(sanitizer: sanitizer_config, handlers: [MatchAttribute.new, TextRewrite.new])
+sanitizer_config = {
+   elements: ["b", "em", "i", "strong", "u"],
+}
+sanitizer = Selma::Sanitizer.new(sanitizer_config)
+rewriter = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [MatchElementRewrite.new, MatchTextRewrite.new])
 rewriter(html)
 ```
 
-Let's take a look at each part individually.
+Here's a look at each individual part.
 
 ### Sanitization config
 
-Selma sanitizes by default. That is, even if the `sanitizer` kwarg is not passed in, sanitization occurs. If you want to disable HTML sanitization (for some reason), pass `nil`:
+Selma sanitizes by default. That is, even if the `sanitizer` kwarg is not passed in, sanitization occurs. If you truly want to disable HTML sanitization (for some reason), pass `nil`:
 
 ```ruby
 Selma::Rewriter.new(sanitizer: nil) # dangerous and ill-advised
@@ -87,22 +91,22 @@ whitespace_elements: ["blockquote", "h1", "h2", "h3", "h4", "h5", "h6", ]
 
 ### Defining handlers
 
-The real power in Selma comes in its use of handlers. A handler is simply an object with various methods:
+The real power in Selma comes in its use of handlers. A handler is simply an object with various methods defined:
 
 - `selector`, a method which MUST return instance of `Selma::Selector` which defines the CSS classes to match
 - `handle_element`, a method that's call on each matched element
-- `handle_text_chunk`, a method that's called on each matched text node; this MUST return a string
+- `handle_text_chunk`, a method that's called on each matched text node
 
 Here's an example which rewrites the `href` attribute on `a` and the `src` attribute on `img` to be `https` rather than `http`.
 
 ```ruby
 class MatchAttribute
-  SELECTOR = Selma::Selector(match_element: "a, img")
+  SELECTOR = Selma::Selector(match_element: %(a[href^="http:"], img[src^="http:"]"))
 
   def handle_element(element)
-    if element.tag_name == "a" && element["href"] =~ /^http:/
+    if element.tag_name == "a"
       element["href"] = rename_http(element["href"])
-    elsif element.tag_name == "img" && element["src"] =~ /^http:/
+    elsif element.tag_name == "img"
       element["src"] = rename_http(element["src"])
     end
   end
@@ -118,10 +122,10 @@ rewriter = Selma::Rewriter.new(handlers: [MatchAttribute.new])
 The `Selma::Selector` object has three possible kwargs:
 
 - `match_element`: any element which matches this CSS rule will be passed on to `handle_element`
-- `match_text_within`: any element which matches this CSS rule will be passed on to `handle_text_chunk`
+- `match_text_within`: any text_chunk which matches this CSS rule will be passed on to `handle_text_chunk`
 - `ignore_text_within`: this is an array of element names whose text contents will be ignored
 
-You've seen an example of `match_element`; here's one for `match_text` which changes strings in various elements which are _not_ `pre` or `code`:
+Here's an example for `handle_text_chunk` which changes strings in various elements which are _not_ `pre` or `code`:
 
 ```ruby
 
@@ -144,20 +148,63 @@ rewriter = Selma::Rewriter.new(handlers: [MatchText.new])
 
 The `element` argument in `handle_element` has the following methods:
 
-- `tag_name`: The element's name
-- `[]`: get an attribute
-- `[]=`: set an attribute
-- `remove_attribute`: remove an attribute
-- `attributes`: list all the attributes
-- `ancestors`: list all the ancestors
-- `append(content, as: content_type)`: appends `content` to the element's inner content, i.e. inserts content right before the element's end tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `tag_name`: Gets the element's name
+- `tag_name=`: Sets the element's name
+- `self_closing?`: A bool which identifies whether or not the element is self-closing
+- `[]`: Get an attribute
+- `[]=`: Set an attribute
+- `remove_attribute`: Remove an attribute
+- `has_attribute?`: A bool which identifies whether or not the element has an attribute
+- `attributes`: List all the attributes
+- `ancestors`: List all of an element's ancestors as an array of strings
 - `before(content, as: content_type)`: Inserts `content` before the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `after(content, as: content_type)`: Inserts `content` after the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
-- `set_inner_content`: replaces inner content of the element with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `prepend(content, as: content_type)`: prepends `content` to the element's inner content, i.e. inserts content right after the element's start tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `append(content, as: content_type)`: appends `content` to the element's inner content, i.e. inserts content right before the element's end tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `set_inner_content`: Replaces inner content of the element with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+
+#### `text_chunk` methods
+
+- `to_s` / `.content`: Gets the text node's content
+- `text_type`: identifies the type of text in the text node
+- `before(content, as: content_type)`: Inserts `content` before the text. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `after(content, as: content_type)`: Inserts `content` after the text. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `replace(content, as: content_type)`: Replaces the text node with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 
 ## Benchmarks
 
-TBD
+<details>
+<pre>
+ruby test/benchmark.rb
+ruby test/benchmark.rb
+Warming up --------------------------------------
+sanitize-document-huge
+                         1.000  i/100ms
+ selma-document-huge     1.000  i/100ms
+Calculating -------------------------------------
+sanitize-document-huge
+                          0.257  (± 0.0%) i/s -      2.000  in   7.783398s
+ selma-document-huge      4.602  (± 0.0%) i/s -     23.000  in   5.002870s
+Warming up --------------------------------------
+sanitize-document-medium
+                         2.000  i/100ms
+selma-document-medium
+                        22.000  i/100ms
+Calculating -------------------------------------
+sanitize-document-medium
+                         28.676  (± 3.5%) i/s -    144.000  in   5.024669s
+selma-document-medium
+                        121.500  (±22.2%) i/s -    594.000  in   5.135410s
+Warming up --------------------------------------
+sanitize-document-small
+                        10.000  i/100ms
+selma-document-small    20.000  i/100ms
+Calculating -------------------------------------
+sanitize-document-small
+                        107.280  (± 0.9%) i/s -    540.000  in   5.033850s
+selma-document-small    118.867  (±31.1%) i/s -    540.000  in   5.080726s
+</pre>
+</details>
 
 ## Contributing
 
