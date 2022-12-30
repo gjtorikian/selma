@@ -1,2 +1,2 @@
 # exclude HTML files from stats
-test/**/*.html linguist-vendored
+test/benchmark/** linguist-vendored
