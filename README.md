@@ -37,7 +37,9 @@ sanitizer_config = {
 }
 sanitizer = Selma::Sanitizer.new(sanitizer_config)
 rewriter = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [MatchElementRewrite.new, MatchTextRewrite.new])
-rewriter(html)
+# removes any element that is not  ["b", "em", "i", "strong", "u"];
+# then calls `MatchElementRewrite` and `MatchTextRewrite` on matching HTML elements
+rewriter.rewrite(html)
 ```
 
 Here's a look at each individual part.
