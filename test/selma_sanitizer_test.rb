@@ -54,9 +54,13 @@ module Selma
         </svg>
       FRAG
 
-      hash = { elements: ["svg", "circle"],
-               attributes: { "svg" => ["width"],
-                             "circle" => ["cx", "cy", "r"], }, }
+      hash = {
+        elements: ["svg", "circle"],
+        attributes: {
+          "svg" => ["width"],
+          "circle" => ["cx", "cy", "r"],
+        },
+      }
       sanitizer = Selma::Sanitizer.new(hash)
       result = Selma::Rewriter.new(sanitizer: sanitizer).rewrite(frag)
 
@@ -69,8 +73,10 @@ module Selma
       end
 
       def test_should_sanitize_an_html_fragment
-        assert_equal("Lorem ipsum dolor sitamet ",
-          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite('<b>Lo<!-- comment -->rem</b> <a href="pants" title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <script>alert("hello world");</script>'))
+        assert_equal(
+          "Lorem ipsum dolor sitamet ",
+          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite('<b>Lo<!-- comment -->rem</b> <a href="pants" title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <script>alert("hello world");</script>'),
+        )
       end
 
       def test_should_not_modify_the_input_string
@@ -84,8 +90,10 @@ module Selma
         assert_equal("foo", Selma::Rewriter.new.rewrite("<html><b>foo</b></html>"))
         assert_equal("foo", Selma::Rewriter.new.rewrite("<body><b>foo</b></body>"))
         assert_equal("foo", Selma::Rewriter.new.rewrite("<html><body><b>foo</b></body></html>"))
-        assert_equal("foo",
-          Selma::Rewriter.new.rewrite("<!DOCTYPE html><html><body><b>foo</b></body></html>"))
+        assert_equal(
+          "foo",
+          Selma::Rewriter.new.rewrite("<!DOCTYPE html><html><body><b>foo</b></body></html>"),
+        )
       end
 
       def test_should_not_choke_on_frozen_fragments
@@ -95,8 +103,10 @@ module Selma
       def test_should_normalize_newlines
         skip("non-essential feature")
 
-        assert_equal("a\n\n\n\n\nz",
-          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a\r\n\n\r\r\r\nz"))
+        assert_equal(
+          "a\n\n\n\n\nz",
+          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a\r\n\n\r\r\r\nz"),
+        )
       end
 
       def test_should_strip_control_characters_except_ascii_whitespace
@@ -105,8 +115,10 @@ module Selma
         sample_control_chars = "\u0001\u0008\u000b\u000e\u001f\u007f\u009f"
         whitespace = "\t\n\f\u0020"
 
-        assert_equal("a#{whitespace}z",
-          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a#{sample_control_chars}#{whitespace}z"))
+        assert_equal(
+          "a#{whitespace}z",
+          Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("a#{sample_control_chars}#{whitespace}z"),
+        )
       end
 
       def test_should_strip_non_characters

@@ -17,8 +17,10 @@ module Selma
         elements: ["div", "p"],
       })
 
-      assert_equal("<div>foo\n\n<p>bar</p><div>\nbaz</div></div><div>quux</div>",
-        Selma::Rewriter.new(sanitizer: sanitizer).rewrite("<div>foo\n\n<p>bar</p><div>\nbaz</div></div><div>quux</div>"))
+      assert_equal(
+        "<div>foo\n\n<p>bar</p><div>\nbaz</div></div><div>quux</div>",
+        Selma::Rewriter.new(sanitizer: sanitizer).rewrite("<div>foo\n\n<p>bar</p><div>\nbaz</div></div><div>quux</div>"),
+      )
     end
 
     def test_should_not_have_the_nokogiri_1_4_2_unterminated_script_style_element_bug

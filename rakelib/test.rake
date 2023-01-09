@@ -8,12 +8,14 @@ require "ruby_memcheck"
 class ValgrindTestTask < Rake::TestTask
   DEFAULT_DIRECTORY_NAME = "suppressions"
   ERROR_EXITCODE = 42 # the answer to life, the universe, and segfaulting.
-  VALGRIND_OPTIONS = ["--num-callers=50",
-                      "--error-limit=no",
-                      "--partial-loads-ok=yes",
-                      "--undef-value-errors=no",
-                      "--error-exitcode=#{ERROR_EXITCODE}",
-                      "--gen-suppressions=all",].freeze
+  VALGRIND_OPTIONS = [
+    "--num-callers=50",
+    "--error-limit=no",
+    "--partial-loads-ok=yes",
+    "--undef-value-errors=no",
+    "--error-exitcode=#{ERROR_EXITCODE}",
+    "--gen-suppressions=all",
+  ].freeze
 
   RubyMemcheck.config(
     binary_name: "selma",

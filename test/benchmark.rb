@@ -50,16 +50,19 @@ def compare_rewriting
         asset_proxy: "https//assets.example.org",
         asset_proxy_secret_key: "ssssh-secret",
       }
-      pipeline = HTML::Pipeline.new([
-        HTML::Pipeline::MarkdownFilter,
-        HTML::Pipeline::SanitizationFilter,
-        HTML::Pipeline::CamoFilter,
-        HTML::Pipeline::ImageMaxWidthFilter,
-        HTML::Pipeline::HttpsFilter,
-        HTML::Pipeline::MentionFilter,
-        HTML::Pipeline::EmojiFilter,
-        HTML::Pipeline::SyntaxHighlightFilter,
-      ], context.merge(gfm: true))
+      pipeline = HTML::Pipeline.new(
+        [
+          HTML::Pipeline::MarkdownFilter,
+          HTML::Pipeline::SanitizationFilter,
+          HTML::Pipeline::CamoFilter,
+          HTML::Pipeline::ImageMaxWidthFilter,
+          HTML::Pipeline::HttpsFilter,
+          HTML::Pipeline::MentionFilter,
+          HTML::Pipeline::EmojiFilter,
+          HTML::Pipeline::SyntaxHighlightFilter,
+        ],
+        context.merge(gfm: true),
+      )
       result = pipeline.call(REWRITE_INPUT)
       result[:output].to_s
     end

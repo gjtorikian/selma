@@ -33,13 +33,49 @@ module Selma
 
         # An Array of element names whose contents will be removed. The contents
         # of all other filtered elements will be left behind.
-        remove_contents: ["iframe", "math", "noembed", "noframes", "noscript", "plaintext", "script", "style", "svg",
-                          "xmp",],
+        remove_contents: [
+          "iframe",
+          "math",
+          "noembed",
+          "noframes",
+          "noscript",
+          "plaintext",
+          "script",
+          "style",
+          "svg",
+          "xmp",
+        ],
 
         # Elements which, when removed, should have their contents surrounded by
         # whitespace.
-        whitespace_elements: ["address", "article", "aside", "blockquote", "br", "dd", "div", "dl", "dt", "footer",
-                              "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "nav", "ol", "p", "pre", "section", "ul",],
+        whitespace_elements: [
+          "address",
+          "article",
+          "aside",
+          "blockquote",
+          "br",
+          "dd",
+          "div",
+          "dl",
+          "dt",
+          "footer",
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5",
+          "h6",
+          "header",
+          "hgroup",
+          "hr",
+          "li",
+          "nav",
+          "ol",
+          "p",
+          "pre",
+          "section",
+          "ul",
+        ],
       )
     end
   end

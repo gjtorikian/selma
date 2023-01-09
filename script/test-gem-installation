@@ -59,8 +59,10 @@ describe gemspec.full_name do
   describe "cruby" do
     it "installs selma files" do
       selma_files.each do |file|
-        assert(File.file?(File.join(selma_ext_dir, file)),
-          "expected #{file} to be installed in #{selma_ext_dir}")
+        assert(
+          File.file?(File.join(selma_ext_dir, file)),
+          "expected #{file} to be installed in #{selma_ext_dir}",
+        )
       end
     end
   end

@@ -21,8 +21,13 @@ module Selma
 
     def test_should_deeply_merge_a_configuration_hash
       # Freeze to ensure that we get an error if either Hash is modified.
-      a = Selma::Sanitizer::Config.freeze_config({ one: { one_one: [0, "1", :a], one_two: false,
-                                                          one_three: Set.new([:a, :b, :c]), } })
+      a = Selma::Sanitizer::Config.freeze_config({
+        one: {
+          one_one: [0, "1", :a],
+          one_two: false,
+          one_three: Set.new([:a, :b, :c]),
+        },
+      })
       b = Selma::Sanitizer::Config.freeze_config({ one: { one_two: true, one_three: 3 }, two: 2 })
 
       c = Selma::Sanitizer::Config.merge(a, b)
@@ -30,15 +35,18 @@ module Selma
       refute_equal(c, a)
       refute_equal(c, b)
 
-      assert_equal({
-        one: {
-          one_one: [0, "1", :a],
-          one_two: true,
-          one_three: 3,
-        },
+      assert_equal(
+        {
+          one: {
+            one_one: [0, "1", :a],
+            one_two: true,
+            one_three: 3,
+          },
 
-        two: 2,
-      }, c)
+          two: 2,
+        },
+        c,
+      )
     end
 
     def test_should_raise_an_argumenterror_if_either_argument_is_not_a_hash
