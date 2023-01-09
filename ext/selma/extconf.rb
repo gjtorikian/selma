@@ -3,4 +3,4 @@ require "rb_sys/mkmf"
 
 require_relative "_util"
 
-create_rust_makefile("selma")
+create_rust_makefile("selma/selma")

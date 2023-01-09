@@ -217,9 +217,9 @@ dependencies = [
 
 [[package]]
 name = "glob"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "hashbrown"
@@ -338,9 +338,9 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 
 [[package]]
 name = "nom"
-version = "7.1.1"
+version = "7.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
+checksum = "e5507769c4919c998e69e49c839d9dc6e693ede4cc4290d6ad8b41d4f09c548c"
 dependencies = [
  "memchr",
  "minimal-lexical",
@@ -348,9 +348,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "peeking_take_while"
@@ -501,18 +501,18 @@ dependencies = [
 
 [[package]]
 name = "rb-sys"
-version = "0.9.52"
+version = "0.9.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02fffdb0162fc4cc1b6509b2d9b32a75f7e7ed392f58bde639e0c33b23e74b97"
+checksum = "b3277448b8eee18de8bedb18883ae02dcd60d47922ddfc6ab408def77da0a9b4"
 dependencies = [
  "rb-sys-build",
 ]
 
 [[package]]
 name = "rb-sys-build"
-version = "0.9.52"
+version = "0.9.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85d1a236755f879fc155d16d9ba4cd3b1975fd52ef6a28113702ae3881b73c03"
+checksum = "c9baae802c93180af02cccb21819589d109070f8e28e14e7070a9ffdeca9b464"
 dependencies = [
  "bindgen",
  "regex",
