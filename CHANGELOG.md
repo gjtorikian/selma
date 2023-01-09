@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.7](https://github.com/gjtorikian/selma/tree/v0.0.7) (2023-01-09)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.6...v0.0.7)
+
+**Merged pull requests:**
+
+- Support ruby32 [\#9](https://github.com/gjtorikian/selma/pull/9) ([gjtorikian](https://github.com/gjtorikian))
+
 ## [v0.0.6](https://github.com/gjtorikian/selma/tree/v0.0.6) (2022-12-28)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.5...v0.0.6)
