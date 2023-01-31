@@ -29,7 +29,7 @@ Selma can perform two different actions, either independently or together:
 - Sanitize HTML, through a [Sanitize](https://github.com/rgrove/sanitize)-like allowlist syntax; and
 - Select HTML using CSS rules, and manipulate elements and text nodes along the way.
 
-It does this through two kwargsL `sanitizer` and `handlers`. The basic API for Selma looks like this:
+It does this through two kwargs: `sanitizer` and `handlers`. The basic API for Selma looks like this:
 
 ```ruby
 sanitizer_config = {
