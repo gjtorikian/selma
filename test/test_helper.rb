@@ -153,7 +153,7 @@ PROTOCOLS = {
     default: "",
     restricted: "",
     basic: "",
-    relaxed: "",
+    relaxed: "<img>",
   },
 
   protocol_based_js_injection_invalid_URL_char: {

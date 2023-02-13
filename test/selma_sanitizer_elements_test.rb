@@ -162,8 +162,6 @@ module Selma
 
         PROTOCOLS.each do |name, data|
           define_method :"test_should_not_allow_#{name}" do
-            next unless /long_UTF8_encoding_without_semicolons/.match?(name)
-
             assert_equal(data[:relaxed], Selma::Rewriter.new(sanitizer: @sanitizer).rewrite(data[:html]))
           end
         end
