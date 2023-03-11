@@ -37,9 +37,6 @@ pub struct Rewriter {
 #[magnus::wrap(class = "Selma::Rewriter")]
 pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
 
-/// SAFETY: This is safe because we only access this data when the GVL is held.
-unsafe impl Send for SelmaRewriter {}
-
 impl SelmaRewriter {
     const SELMA_ON_END_TAG: &str = "on_end_tag";
     const SELMA_HANDLE_ELEMENT: &str = "handle_element";
