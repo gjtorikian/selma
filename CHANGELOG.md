@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.1.0](https://github.com/gjtorikian/selma/tree/v0.1.0) (2023-03-29)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.7...v0.1.0)
+
+**Merged pull requests:**
+
+- Bump lol\_html from 0.3.2 to 0.3.3 [\#13](https://github.com/gjtorikian/selma/pull/13) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump enum-iterator from 1.3.0 to 1.4.0 [\#12](https://github.com/gjtorikian/selma/pull/12) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Update ruby-lsp requirement from ~\> 0.3.5 to ~\> 0.4.0 [\#11](https://github.com/gjtorikian/selma/pull/11) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump enum-iterator from 1.2.0 to 1.3.0 [\#10](https://github.com/gjtorikian/selma/pull/10) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [v0.0.7](https://github.com/gjtorikian/selma/tree/v0.0.7) (2023-01-09)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.6...v0.0.7)
