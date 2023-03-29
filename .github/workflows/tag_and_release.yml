@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - "lib/commonmarker/version.rb"
+      - "lib/selma/version.rb"
 
 env:
   CACHE_KEY_PREFIX: "cruby-v1-"
@@ -78,7 +78,7 @@ jobs:
       - name: Get current version
         id: version-label
         run: |
-          VERSION=$(grep VERSION lib/commonmarker/version.rb | head -n 1 | cut -d'"' -f2)
+          VERSION=$(grep VERSION lib/selma/version.rb | head -n 1 | cut -d'"' -f2)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create tag
