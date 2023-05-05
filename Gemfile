@@ -37,4 +37,4 @@ group :benchmark do
   gem "sanitize", "~> 6.0"
 end
 
-gem "ruby-lsp", "~> 0.4.0", group: :development
+gem "ruby-lsp", "~> 0.5.1", group: :development
