@@ -77,7 +77,7 @@ module Selma
           )
           assert_equal(
             "<!DOCTYPE html><html>foo</html>",
-            Selma::Rewriter.new(sanitizer: @sanitizer).rewrite(('<!DOCTYPE html BLAH "-//W3C//DTD HTML 4.01//EN"><html>foo</html>')),
+            Selma::Rewriter.new(sanitizer: @sanitizer).rewrite('<!DOCTYPE html BLAH "-//W3C//DTD HTML 4.01//EN"><html>foo</html>'),
           )
           assert_equal(
             "<!DOCTYPE html><html>foo</html>",

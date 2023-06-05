@@ -39,12 +39,12 @@ impl SelmaHTMLTextChunk {
 
         if let Ok(tc) = binding.text_chunk.get() {
             match tc.text_type() {
-                TextType::Data => Ok(Symbol::from("data")),
-                TextType::PlainText => Ok(Symbol::from("plain_text")),
-                TextType::RawText => Ok(Symbol::from("raw_text")),
-                TextType::ScriptData => Ok(Symbol::from("script")),
-                TextType::RCData => Ok(Symbol::from("rc_data")),
-                TextType::CDataSection => Ok(Symbol::from("cdata_section")),
+                TextType::Data => Ok(Symbol::new("data")),
+                TextType::PlainText => Ok(Symbol::new("plain_text")),
+                TextType::RawText => Ok(Symbol::new("raw_text")),
+                TextType::ScriptData => Ok(Symbol::new("script")),
+                TextType::RCData => Ok(Symbol::new("rc_data")),
+                TextType::CDataSection => Ok(Symbol::new("cdata_section")),
             }
         } else {
             Err(Error::new(

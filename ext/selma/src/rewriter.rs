@@ -1,6 +1,6 @@
 use lol_html::{
     doc_comments, doctype, element,
-    html_content::{Element, EndTag, TextChunk},
+    html_content::{Element, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
 use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
@@ -331,11 +331,15 @@ impl SelmaRewriter {
                 element_stack.as_ref().borrow_mut().push(tag_name);
 
                 let closure_element_stack = element_stack.clone();
-                el.on_end_tag(move |_end_tag: &mut EndTag| {
-                    let mut stack = closure_element_stack.as_ref().borrow_mut();
-                    stack.pop();
-                    Ok(())
-                })?;
+
+                el.end_tag_handlers()
+                    .unwrap()
+                    .push(Box::new(move |_end_tag| {
+                        let mut stack = closure_element_stack.as_ref().borrow_mut();
+                        stack.pop();
+                        Ok(())
+                    }));
+
                 Ok(())
             }));
         });
@@ -370,14 +374,17 @@ impl SelmaRewriter {
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
             // TODO: error here is an "EndTagError"
-            element.on_end_tag(move |end_tag| {
-                let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
+            element
+                .end_tag_handlers()
+                .unwrap()
+                .push(Box::new(move |end_tag| {
+                    let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
 
-                match rb_handler.funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,)) {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(err.to_string().into()),
-                }
-            });
+                    match rb_handler.funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,)) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
+                    }
+                }));
         }
 
         let rb_element = SelmaHTMLElement::new(element, ancestors);
