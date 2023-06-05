@@ -1,4 +1,4 @@
-name: Test cruby build
+name: Build
 concurrency:
   group: "${{github.workflow}}-${{github.ref}}"
   cancel-in-progress: true

@@ -8,11 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: ruby/setup-ruby@v1
+
+      - name: Set up Ruby
+        uses: yettoapp/actions/setup-languages@main
         with:
-          ruby-version: 3.2
-          rubygems: latest
-          bundler-cache: true # 'bundle install' and cache
+          ruby: true
+
       - name: Rubocop
         run: bundle exec rake rubocop
 
@@ -23,12 +24,12 @@ jobs:
         rust:
           - stable
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Obtain Rust
-      run: rustup override set ${{ matrix.rust }}
-    - name: Check clippy
-      run: rustup component add clippy && cargo clippy
-    - name: Check formatting
-      run: rustup component add rustfmt && cargo fmt -- --check
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Obtain Rust
+        run: rustup override set ${{ matrix.rust }}
+      - name: Check clippy
+        run: rustup component add clippy && cargo clippy
+      - name: Check formatting
+        run: rustup component add rustfmt && cargo fmt -- --check
