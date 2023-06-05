@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.1.2](https://github.com/gjtorikian/selma/tree/v0.1.2) (2023-06-05)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.1.0...v0.1.2)
+
+**Merged pull requests:**
+
+- Bump lol\_html from 0.4.0 to 1.0.0 [\#17](https://github.com/gjtorikian/selma/pull/17) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Update ruby-lsp requirement from ~\> 0.4.0 to ~\> 0.5.1 [\#16](https://github.com/gjtorikian/selma/pull/16) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump lol\_html from 0.3.3 to 0.4.0 [\#15](https://github.com/gjtorikian/selma/pull/15) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [v0.1.0](https://github.com/gjtorikian/selma/tree/v0.1.0) (2023-03-29)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.0.7...v0.1.0)
