@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.3](https://github.com/gjtorikian/selma/tree/v0.1.3) (2023-06-05)
+
+[Full Changelog](https://github.com/gjtorikian/selma/compare/v0.1.2...v0.1.3)
+
 ## [v0.1.2](https://github.com/gjtorikian/selma/tree/v0.1.2) (2023-06-05)
 
 [Full Changelog](https://github.com/gjtorikian/selma/compare/v0.1.0...v0.1.2)
