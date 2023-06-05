@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 enum-iterator = "1.4"
 escapist = "0.0.2"
-magnus = { git = "https://github.com/matsadler/magnus", rev = "23160f7229ac74c42da1b5096a65ccbc40962697" }
+magnus = "0.5"
 lol_html = "1.0"
 
 [lib]

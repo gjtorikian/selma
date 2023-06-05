@@ -530,11 +530,12 @@ impl SelmaSanitizer {
     fn check_if_end_tag_needs_removal(element: &mut Element) {
         if element.removed() && !crate::tags::Tag::tag_from_element(element).self_closing {
             element
-                .on_end_tag(move |end| {
+                .end_tag_handlers()
+                .unwrap()
+                .push(Box::new(move |end| {
                     Self::remove_end_tag(end);
                     Ok(())
-                })
-                .unwrap();
+                }));
         }
     }
 
