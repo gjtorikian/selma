@@ -22,6 +22,8 @@ jobs:
     strategy:
       matrix:
         platform:
+          - ruby
+
           - x86_64-linux
           - aarch64-linux
 
@@ -33,15 +35,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: ruby/setup-ruby@v1
+      - name: Set up Ruby
+        uses: yettoapp/actions/setup-languages@main
         with:
-          ruby-version: "3.2" # LATEST_RUBY_VERSION
+          ruby: true
 
       - uses: oxidize-rb/actions/cross-gem@v1
+        if: ${{ matrix.platform != 'ruby' }}
         id: cross-gem
         with:
           platform: ${{ matrix.platform }}
           ruby-versions: "3.1,3.2" # SUPPORTED_RUBY_VERSIONS
+
+      - name: Generic Ruby build
+        if: ${{ matrix.platform == 'ruby' }}
+        run: |
+          bundle exec rake compile
+          bundle exec rake build
 
       - name: Publish to RubyGems
         env:
@@ -52,12 +62,12 @@ jobs:
           touch $HOME/.gem/credentials
           chmod 0600 $HOME/.gem/credentials
           printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-          for i in *.gem; do
-            if [ -f "$i" ]
-            then
-              gem push "$i" || true
-            fi
-          done
+          if [ -n "${GEM_OUTPUT_PATH}" ]; then
+            gem push "${GEM_OUTPUT_PATH}"
+            echo "Pushed ${GEM_OUTPUT_PATH}"
+          else
+            gem push pkg/selma-*.gem
+          fi
 
   release:
     needs: ["native_gem"]
