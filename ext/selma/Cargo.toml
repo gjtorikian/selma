@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 enum-iterator = "1.4"
 escapist = "0.0.2"
-magnus = "0.5"
+magnus = "0.6"
 lol_html = "1.0"
 
 [lib]
