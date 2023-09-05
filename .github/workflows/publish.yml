@@ -33,7 +33,7 @@ jobs:
           - x64-mingw-ucrt
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Ruby
         uses: yettoapp/actions/setup-languages@main
@@ -75,7 +75,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Ruby 3.2
         uses: ruby/setup-ruby@v1
