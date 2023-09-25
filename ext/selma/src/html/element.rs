@@ -215,6 +215,35 @@ impl SelmaHTMLElement {
 
         Ok(())
     }
+
+    fn remove(&self) {
+        let mut binding = self.0.borrow_mut();
+
+        if let Ok(e) = binding.element.get_mut() {
+            e.remove()
+        }
+    }
+
+    fn remove_and_keep_content(&self) {
+        let mut binding = self.0.borrow_mut();
+
+        if let Ok(e) = binding.element.get_mut() {
+            e.remove_and_keep_content()
+        }
+    }
+
+    fn is_removed(&self) -> Result<bool, Error> {
+        let binding = self.0.borrow();
+
+        if let Ok(e) = binding.element.get() {
+            Ok(e.removed())
+        } else {
+            Err(Error::new(
+                exception::runtime_error(),
+                "`is_removed` is not available",
+            ))
+        }
+    }
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
@@ -249,6 +278,13 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
         "set_inner_content",
         method!(SelmaHTMLElement::set_inner_content, -1),
     )?;
+
+    c_element.define_method("remove", method!(SelmaHTMLElement::remove, 0))?;
+    c_element.define_method(
+        "remove_and_keep_content",
+        method!(SelmaHTMLElement::remove_and_keep_content, 0),
+    )?;
+    c_element.define_method("removed?", method!(SelmaHTMLElement::is_removed, 0))?;
 
     Ok(())
 }

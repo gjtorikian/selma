@@ -164,6 +164,9 @@ The `element` argument in `handle_element` has the following methods:
 - `prepend(content, as: content_type)`: prepends `content` to the element's inner content, i.e. inserts content right after the element's start tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `append(content, as: content_type)`: appends `content` to the element's inner content, i.e. inserts content right before the element's end tag. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `set_inner_content`: Replaces inner content of the element with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
+- `remove`: Removes the element and its inner content.
+- `remove_and_keep_content`: Removes the element, but keeps its content. I.e. remove start and end tags of the element.
+- `removed?`: A bool which identifies if the element has been removed or replaced with some content.
 
 #### `text_chunk` methods
 

@@ -302,4 +302,58 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     frag = %(<strong class="urgent">Wow!</strong>)
     Selma::Rewriter.new(sanitizer: nil, handlers: [GetHasAttr.new]).rewrite(frag)
   end
+
+  class RemoveElement < Minitest::Test
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    # rubocop:disable Lint/MissingSuper
+    def initialize
+      @assertions = 0
+    end
+    # rubocop:enable Lint/MissingSuper
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.remove
+
+      assert(element.removed?)
+    end
+  end
+
+  def test_that_it_can_remove
+    frag = "<div>Wow<strong>!</strong></div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [RemoveElement.new]).rewrite(frag)
+
+    assert_equal(%(<div>Wow</div>), modified_doc)
+  end
+
+  class RemoveElementAndKeepContent < Minitest::Test
+    SELECTOR = Selma::Selector.new(match_element: "strong")
+
+    # rubocop:disable Lint/MissingSuper
+    def initialize
+      @assertions = 0
+    end
+    # rubocop:enable Lint/MissingSuper
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.remove_and_keep_content
+
+      assert(element.removed?)
+    end
+  end
+
+  def test_that_it_can_remove_and_keep_content
+    frag = "<div>Wow<strong>!</strong></div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [RemoveElementAndKeepContent.new]).rewrite(frag)
+
+    assert_equal(%(<div>Wow!</div>), modified_doc)
+  end
 end
