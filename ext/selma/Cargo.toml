@@ -7,7 +7,7 @@ edition = "2021"
 enum-iterator = "1.4"
 escapist = "0.0.2"
 magnus = "0.6"
-lol_html = "1.0"
+lol_html = "1.2"
 
 [lib]
 name = "selma"
