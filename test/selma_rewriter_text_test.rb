@@ -164,7 +164,7 @@ class SelmaRewriterTextTest < Minitest::Test
     end
 
     def emoji_pattern
-      @emoji_pattern ||= /:(#{emoji_names.map { |name| Regexp.escape(name) }.join('|')}):/
+      @emoji_pattern ||= /:(#{emoji_names.map { |name| Regexp.escape(name) }.join("|")}):/
     end
 
     def emoji_names

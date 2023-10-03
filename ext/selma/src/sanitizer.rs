@@ -7,6 +7,7 @@ use lol_html::{
 use magnus::{class, function, method, scan_args, Module, Object, RArray, RHash, RModule, Value};
 
 #[derive(Clone, Debug)]
+#[derive(Default)]
 struct ElementSanitizer {
     allowed_attrs: Vec<String>,
     required_attrs: Vec<String>,
@@ -14,17 +15,7 @@ struct ElementSanitizer {
     protocol_sanitizers: HashMap<String, Vec<String>>,
 }
 
-impl Default for ElementSanitizer {
-    fn default() -> Self {
-        ElementSanitizer {
-            allowed_attrs: vec![],
-            allowed_classes: vec![],
-            required_attrs: vec![],
 
-            protocol_sanitizers: HashMap::new(),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Sanitizer {
