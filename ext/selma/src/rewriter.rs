@@ -3,7 +3,9 @@ use lol_html::{
     html_content::{Element, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
-use magnus::{exception, function, method, scan_args, Module, Object, RArray, RModule, Value};
+use magnus::{
+    exception, function, method, scan_args, typed_data::Obj, Module, Object, RArray, RModule, Value,
+};
 
 use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
 
@@ -12,13 +14,12 @@ use crate::{
     sanitizer::SelmaSanitizer,
     selector::SelmaSelector,
     tags::Tag,
-    wrapped_struct::WrappedStruct,
 };
 
 #[derive(Clone, Debug)]
 pub struct Handler {
     rb_handler: Value,
-    rb_selector: WrappedStruct<SelmaSelector>,
+    rb_selector: Obj<SelmaSelector>,
 
     total_element_handler_calls: usize,
     total_elapsed_element_handlers: f64,
@@ -53,15 +54,15 @@ impl SelmaRewriter {
         let sanitizer = match rb_sanitizer {
             None => {
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
-                let wrapped_sanitizer = WrappedStruct::from(default_sanitizer);
+                let wrapped_sanitizer = Obj::wrap(default_sanitizer);
                 wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                Some(wrapped_sanitizer.get().unwrap().to_owned())
+                Some(wrapped_sanitizer.get().to_owned())
             }
             Some(sanitizer_value) => match sanitizer_value {
                 None => None,
                 Some(sanitizer) => {
                     sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                    Some(sanitizer.get().unwrap().to_owned())
+                    Some(sanitizer.get().to_owned())
                 }
             },
         };
@@ -86,16 +87,15 @@ impl SelmaRewriter {
                         ));
                     }
 
-                    let rb_selector: WrappedStruct<SelmaSelector> =
-                        match rb_handler.funcall("selector", ()) {
-                            Err(err) => {
-                                return Err(magnus::Error::new(
-                                    exception::type_error(),
-                                    format!("Error instantiating selector: {err:?}"),
-                                ));
-                            }
-                            Ok(rb_selector) => rb_selector,
-                        };
+                    let rb_selector: Obj<SelmaSelector> = match rb_handler.funcall("selector", ()) {
+                        Err(err) => {
+                            return Err(magnus::Error::new(
+                                exception::type_error(),
+                                format!("Error instantiating selector: {err:?}"),
+                            ));
+                        }
+                        Ok(rb_selector) => rb_selector,
+                    };
                     let handler = Handler {
                         rb_handler,
                         rb_selector,
@@ -128,13 +128,7 @@ impl SelmaRewriter {
     #[allow(clippy::let_unit_value)]
     fn scan_parse_args(
         args: &[Value],
-    ) -> Result<
-        (
-            Option<Option<WrappedStruct<SelmaSanitizer>>>,
-            Option<RArray>,
-        ),
-        magnus::Error,
-    > {
+    ) -> Result<(Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>), magnus::Error> {
         let args = scan_args::scan_args(args)?;
         let _: () = args.required;
         let _: () = args.optional;
@@ -145,10 +139,7 @@ impl SelmaRewriter {
         let kwargs = scan_args::get_kwargs::<
             _,
             (),
-            (
-                Option<Option<WrappedStruct<SelmaSanitizer>>>,
-                Option<RArray>,
-            ),
+            (Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>),
             (),
         >(args.keywords, &[], &["sanitizer", "handlers"])?;
         let (rb_sanitizer, rb_handlers) = kwargs.optional;
@@ -270,7 +261,7 @@ impl SelmaRewriter {
         handlers.iter().for_each(|handler| {
             let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
 
-            let selector = handler.rb_selector.get_static().unwrap();
+            let selector = handler.rb_selector.get();
 
             // TODO: test final raise by simulating errors
             if selector.match_element().is_some() {
