@@ -219,8 +219,8 @@ impl SelmaHTMLElement {
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_element = c_html
-        .define_class("Element", Default::default())
-        .expect("cannot find class Selma::HTML::Element");
+        .define_class("Element", magnus::class::object())
+        .expect("cannot define class Selma::HTML::Element");
 
     c_element.define_method("tag_name", method!(SelmaHTMLElement::tag_name, 0))?;
     c_element.define_method("tag_name=", method!(SelmaHTMLElement::set_tag_name, 1))?;

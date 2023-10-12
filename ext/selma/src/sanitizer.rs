@@ -545,7 +545,9 @@ impl SelmaSanitizer {
 }
 
 pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
-    let c_sanitizer = m_selma.define_class("Sanitizer", Default::default())?;
+    let c_sanitizer = m_selma
+        .define_class("Sanitizer", magnus::class::object())
+        .expect("cannot define class Selma::Sanitizer");
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
     c_sanitizer.define_method("config", method!(SelmaSanitizer::get_config, 0))?;

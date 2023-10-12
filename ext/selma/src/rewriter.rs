@@ -421,8 +421,8 @@ impl SelmaRewriter {
 
 pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
     let c_rewriter = m_selma
-        .define_class("Rewriter", Default::default())
-        .expect("cannot find class Selma::Rewriter");
+        .define_class("Rewriter", magnus::class::object())
+        .expect("cannot define class Selma::Rewriter");
 
     c_rewriter.define_singleton_method("new", function!(SelmaRewriter::new, -1))?;
     c_rewriter
