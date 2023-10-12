@@ -9,7 +9,6 @@ pub mod rewriter;
 pub mod sanitizer;
 pub mod selector;
 pub mod tags;
-pub mod wrapped_struct;
 
 #[allow(clippy::let_unit_value)]
 fn scan_text_args(args: &[Value]) -> Result<(String, ContentType), magnus::Error> {

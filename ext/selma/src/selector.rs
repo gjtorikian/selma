@@ -103,7 +103,7 @@ impl SelmaSelector {
 
 pub fn init(m_selma: RModule) -> Result<(), Error> {
     let c_selector = m_selma
-        .define_class("Selector", Default::default())
+        .define_class("Selector", magnus::class::object())
         .expect("cannot define class Selma::Selector");
 
     c_selector.define_singleton_method("new", function!(SelmaSelector::new, -1))?;

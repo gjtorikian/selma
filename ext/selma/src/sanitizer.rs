@@ -4,10 +4,13 @@ use lol_html::{
     errors::AttributeNameError,
     html_content::{Comment, ContentType, Doctype, Element, EndTag},
 };
-use magnus::{class, function, method, scan_args, Module, Object, RArray, RHash, RModule, Value};
+use magnus::{
+    class, function, method, scan_args,
+    value::{Opaque, ReprValue},
+    Module, Object, RArray, RHash, RModule, Ruby, Value,
+};
 
-#[derive(Clone, Debug)]
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 struct ElementSanitizer {
     allowed_attrs: Vec<String>,
     required_attrs: Vec<String>,
@@ -15,9 +18,7 @@ struct ElementSanitizer {
     protocol_sanitizers: HashMap<String, Vec<String>>,
 }
 
-
-
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Sanitizer {
     flags: [u8; crate::tags::Tag::TAG_COUNT],
     allowed_attrs: Vec<String>,
@@ -27,10 +28,10 @@ pub struct Sanitizer {
     pub escape_tagfilter: bool,
     pub allow_comments: bool,
     pub allow_doctype: bool,
-    config: RHash,
+    config: Opaque<RHash>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[magnus::wrap(class = "Selma::Sanitizer")]
 pub struct SelmaSanitizer(std::cell::RefCell<Sanitizer>);
 
@@ -68,14 +69,15 @@ impl SelmaSanitizer {
             escape_tagfilter: true,
             allow_comments: false,
             allow_doctype: true,
-            config,
+            config: config.into(),
         })))
     }
 
     fn get_config(&self) -> Result<RHash, magnus::Error> {
         let binding = self.0.borrow();
+        let ruby = Ruby::get().unwrap();
 
-        Ok(binding.config)
+        Ok(ruby.get_inner(binding.config))
     }
 
     /// Toggle a sanitizer option on or off.
@@ -545,7 +547,9 @@ impl SelmaSanitizer {
 }
 
 pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
-    let c_sanitizer = m_selma.define_class("Sanitizer", Default::default())?;
+    let c_sanitizer = m_selma
+        .define_class("Sanitizer", magnus::class::object())
+        .expect("cannot define class Selma::Sanitizer");
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
     c_sanitizer.define_method("config", method!(SelmaSanitizer::get_config, 0))?;
