@@ -8,6 +8,8 @@ pub struct SelmaSelector {
     ignore_text_within: Option<Vec<String>>,
 }
 
+type SelectorMatches = (Option<String>, Option<String>, Option<Vec<String>>);
+
 impl SelmaSelector {
     fn new(args: &[Value]) -> Result<Self, Error> {
         let (match_element, match_text_within, rb_ignore_text_within) =
@@ -63,9 +65,7 @@ impl SelmaSelector {
     }
 
     #[allow(clippy::let_unit_value)]
-    fn scan_parse_args(
-        args: &[Value],
-    ) -> Result<(Option<String>, Option<String>, Option<Vec<String>>), Error> {
+    fn scan_parse_args(args: &[Value]) -> Result<SelectorMatches, Error> {
         let args = scan_args::scan_args(args)?;
         let _: () = args.required;
         let _: () = args.optional;
