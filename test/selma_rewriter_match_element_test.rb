@@ -319,7 +319,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     def handle_element(element)
       element.remove
 
-      assert(element.removed?)
+      assert_predicate(element, :removed?)
     end
   end
 
@@ -346,7 +346,7 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     def handle_element(element)
       element.remove_and_keep_content
 
-      assert(element.removed?)
+      assert_predicate(element, :removed?)
     end
   end
 

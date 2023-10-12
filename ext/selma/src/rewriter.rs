@@ -23,23 +23,23 @@ use crate::{
 pub struct Handler {
     rb_handler: Opaque<Value>,
     rb_selector: Opaque<Obj<SelmaSelector>>,
+    // total_element_handler_calls: usize,
+    // total_elapsed_element_handlers: f64,
 
-    total_element_handler_calls: usize,
-    total_elapsed_element_handlers: f64,
-
-    total_text_handler_calls: usize,
-    total_elapsed_text_handlers: f64,
+    // total_text_handler_calls: usize,
+    // total_elapsed_text_handlers: f64,
 }
 
 pub struct Rewriter {
     sanitizer: Option<SelmaSanitizer>,
     handlers: Vec<Handler>,
-
-    total_elapsed: f64,
+    // total_elapsed: f64,
 }
 
 #[magnus::wrap(class = "Selma::Rewriter")]
 pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
+
+type RewriterValues = (Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>);
 
 impl SelmaRewriter {
     const SELMA_ON_END_TAG: &str = "on_end_tag";
@@ -102,11 +102,11 @@ impl SelmaRewriter {
                     let handler = Handler {
                         rb_handler: Opaque::from(rb_handler),
                         rb_selector: Opaque::from(rb_selector),
-                        total_element_handler_calls: 0,
-                        total_elapsed_element_handlers: 0.0,
+                        // total_element_handler_calls: 0,
+                        // total_elapsed_element_handlers: 0.0,
 
-                        total_text_handler_calls: 0,
-                        total_elapsed_text_handlers: 0.0,
+                        // total_text_handler_calls: 0,
+                        // total_elapsed_text_handlers: 0.0,
                     };
                     handlers.push(handler);
                 }
@@ -124,14 +124,12 @@ impl SelmaRewriter {
         Ok(Self(std::cell::RefCell::new(Rewriter {
             sanitizer,
             handlers,
-            total_elapsed: 0.0,
+            // total_elapsed: 0.0,
         })))
     }
 
     #[allow(clippy::let_unit_value)]
-    fn scan_parse_args(
-        args: &[Value],
-    ) -> Result<(Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>), magnus::Error> {
+    fn scan_parse_args(args: &[Value]) -> Result<RewriterValues, magnus::Error> {
         let args = scan_args::scan_args(args)?;
         let _: () = args.required;
         let _: () = args.optional;
