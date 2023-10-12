@@ -4,7 +4,10 @@ use lol_html::{
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
 };
 use magnus::{
-    exception, function, method, scan_args, typed_data::Obj, Module, Object, RArray, RModule, Value,
+    exception, function, method, scan_args,
+    typed_data::Obj,
+    value::{Opaque, ReprValue},
+    Module, Object, RArray, RModule, Ruby, Value,
 };
 
 use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
@@ -16,10 +19,10 @@ use crate::{
     tags::Tag,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Handler {
-    rb_handler: Value,
-    rb_selector: Obj<SelmaSelector>,
+    rb_handler: Opaque<Value>,
+    rb_selector: Opaque<Obj<SelmaSelector>>,
 
     total_element_handler_calls: usize,
     total_elapsed_element_handlers: f64,
@@ -97,8 +100,8 @@ impl SelmaRewriter {
                         Ok(rb_selector) => rb_selector,
                     };
                     let handler = Handler {
-                        rb_handler,
-                        rb_selector,
+                        rb_handler: Opaque::from(rb_handler),
+                        rb_selector: Opaque::from(rb_selector),
                         total_element_handler_calls: 0,
                         total_elapsed_element_handlers: 0.0,
 
@@ -261,7 +264,9 @@ impl SelmaRewriter {
         handlers.iter().for_each(|handler| {
             let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
 
-            let selector = handler.rb_selector.get();
+            let ruby = Ruby::get().unwrap();
+
+            let selector = ruby.get_inner(handler.rb_selector);
 
             // TODO: test final raise by simulating errors
             if selector.match_element().is_some() {
@@ -271,7 +276,7 @@ impl SelmaRewriter {
                     selector.match_element().unwrap(),
                     move |el| {
                         match Self::process_element_handlers(
-                            handler.rb_handler,
+                            ruby.get_inner(handler.rb_handler),
                             el,
                             &closure_element_stack.borrow(),
                         ) {
@@ -302,7 +307,9 @@ impl SelmaRewriter {
                             }
                         }
 
-                        match Self::process_text_handlers(handler.rb_handler, text) {
+                        let ruby = Ruby::get().unwrap();
+                        match Self::process_text_handlers(ruby.get_inner(handler.rb_handler), text)
+                        {
                             Ok(_) => Ok(()),
                             Err(err) => Err(err.to_string().into()),
                         }
