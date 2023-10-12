@@ -1,3 +1,5 @@
+## [v0.2.1] - 12-10-2023
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.2.0...v0.2.1
 # Changelog
 
 ## [v0.1.6](https://github.com/gjtorikian/selma/tree/v0.1.6) (2023-06-05)
