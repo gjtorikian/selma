@@ -5,7 +5,9 @@ use magnus::{Error, Module, RModule};
 pub(crate) struct SelmaHTML {}
 
 pub fn init(m_selma: RModule) -> Result<(), Error> {
-    let c_html = m_selma.define_class("HTML", Default::default()).unwrap();
+    let c_html = m_selma
+        .define_class("HTML", magnus::class::object())
+        .expect("cannot define class Selma::HTML");
 
     element::init(c_html).expect("cannot define Selma::HTML::Element class");
     end_tag::init(c_html).expect("cannot define Selma::HTML::EndTag class");

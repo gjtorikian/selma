@@ -99,8 +99,8 @@ impl SelmaHTMLTextChunk {
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_text_chunk = c_html
-        .define_class("TextChunk", Default::default())
-        .expect("cannot find class Selma::HTML::TextChunk");
+        .define_class("TextChunk", magnus::class::object())
+        .expect("cannot define class Selma::HTML::TextChunk");
 
     c_text_chunk.define_method("to_s", method!(SelmaHTMLTextChunk::to_s, 0))?;
     c_text_chunk.define_method("content", method!(SelmaHTMLTextChunk::to_s, 0))?;

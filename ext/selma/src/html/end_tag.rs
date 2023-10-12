@@ -26,8 +26,8 @@ impl SelmaHTMLEndTag {
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
     let c_end_tag = c_html
-        .define_class("EndTag", Default::default())
-        .expect("cannot find class Selma::HTML::EndTag");
+        .define_class("EndTag", magnus::class::object())
+        .expect("cannot define class Selma::HTML::EndTag");
 
     c_end_tag.define_method("tag_name", method!(SelmaHTMLEndTag::tag_name, 0))?;
 
