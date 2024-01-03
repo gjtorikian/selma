@@ -1,3 +1,9 @@
+## [v0.2.2] - 03-01-2024
+## What's Changed
+* Updates for Ruby 3.3 / Rust 1.75 by @gjtorikian in https://github.com/gjtorikian/selma/pull/37
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.2.1...v0.2.2
 ## [v0.2.1] - 12-10-2023
 **Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.2.0...v0.2.1
 # Changelog
