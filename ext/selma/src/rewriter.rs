@@ -42,9 +42,9 @@ pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
 type RewriterValues = (Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>);
 
 impl SelmaRewriter {
-    const SELMA_ON_END_TAG: &str = "on_end_tag";
-    const SELMA_HANDLE_ELEMENT: &str = "handle_element";
-    const SELMA_HANDLE_TEXT_CHUNK: &str = "handle_text_chunk";
+    const SELMA_ON_END_TAG: &'static str = "on_end_tag";
+    const SELMA_HANDLE_ELEMENT: &'static str = "handle_element";
+    const SELMA_HANDLE_TEXT_CHUNK: &'static str = "handle_text_chunk";
 
     /// @yard
     /// @def new(sanitizer: Selma::Sanitizer.new(Selma::Sanitizer::Config::DEFAULT), handlers: [])
@@ -56,13 +56,14 @@ impl SelmaRewriter {
 
         let sanitizer = match rb_sanitizer {
             None => {
+                // no `sanitizer:` provided, use default
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
                 let wrapped_sanitizer = Obj::wrap(default_sanitizer);
                 wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
                 Some(wrapped_sanitizer.get().to_owned())
             }
             Some(sanitizer_value) => match sanitizer_value {
-                None => None,
+                None => None, // no `sanitizer:` provided, use default
                 Some(sanitizer) => {
                     sanitizer.funcall::<&str, (), Value>("setup", ())?;
                     Some(sanitizer.get().to_owned())

@@ -205,7 +205,7 @@ impl Tag {
             || tag.index == HTMLTag::XMP as usize
     }
 
-    pub const ESCAPEWORTHY_TAGS_CSS: &str =
+    pub const ESCAPEWORTHY_TAGS_CSS: &'static str =
         "title, textarea, style, xmp, iframe, noembed, noframes, script, plaintext";
 
     pub fn html_tags() -> Vec<HTMLTag> {
