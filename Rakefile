@@ -6,8 +6,11 @@ if ENV.fetch("DEBUG", false)
 end
 
 # Gem Spec
-require "bundler"
+require "bundler/gem_tasks"
 SELMA_SPEC = Gem::Specification.load("selma.gemspec")
 
 # Packaging
-require "bundler/gem_tasks"
+require "rubygems/package_task"
+gem_path = Gem::PackageTask.new(SELMA_SPEC).define
+desc "Package the Ruby gem"
+task "package" => [gem_path]
