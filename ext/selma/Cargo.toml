@@ -6,7 +6,7 @@ rust-version = "1.75.0"
 publish = false
 
 [dependencies]
-enum-iterator = "2.0"
+enum-iterator = "2.1"
 escapist = "0.0.2"
 magnus = "0.6"
 lol_html = "1.2"
