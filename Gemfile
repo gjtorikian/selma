@@ -30,10 +30,6 @@ end
 group :benchmark do
   # benchmark stuff
   gem "benchmark-ips"
-  gem "commonmarker"
-  gem "gemoji"
-  gem "html-pipeline"
-  gem "rouge"
   gem "sanitize", "~> 6.0"
 end
 
