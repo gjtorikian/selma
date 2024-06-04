@@ -14,3 +14,5 @@ require "rubygems/package_task"
 gem_path = Gem::PackageTask.new(SELMA_SPEC).define
 desc "Package the Ruby gem"
 task "package" => [gem_path]
+
+task default: [:test, :rubocop]
