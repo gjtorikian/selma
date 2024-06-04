@@ -16,6 +16,7 @@ module Selma
           "colgroup",
           "data",
           "del",
+          "details",
           "div",
           "figcaption",
           "figure",
