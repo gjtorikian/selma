@@ -103,7 +103,11 @@ Here's an example which rewrites the `href` attribute on `a` and the `src` attri
 
 ```ruby
 class MatchAttribute
-  SELECTOR = Selma::Selector(match_element: %(a[href^="http:"], img[src^="http:"]"))
+  SELECTOR = Selma::Selector.new(match_element: %(a[href^="http:"], img[src^="http:"]"))
+
+  def selector
+    SELECTOR
+  end
 
   def handle_element(element)
     if element.tag_name == "a"
