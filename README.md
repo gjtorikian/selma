@@ -182,38 +182,118 @@ The `element` argument in `handle_element` has the following methods:
 
 ## Benchmarks
 
+When `bundle exec rake benchmark`, two different benchmarks are calculated. Here are those results on my machine.
+
+### Benchmarks for just the sanitization process
+
+Comparing Selma against popular Ruby sanitization gems:
+
+<!-- prettier-ignore-start -->
 <details>
 <pre>
-ruby test/benchmark.rb
-ruby test/benchmark.rb
 Warming up --------------------------------------
-sanitize-document-huge
-                         1.000  i/100ms
- selma-document-huge     1.000  i/100ms
+         sanitize-sm    15.000 i/100ms
+            selma-sm   126.000 i/100ms
 Calculating -------------------------------------
-sanitize-document-huge
-                          0.257  (± 0.0%) i/s -      2.000  in   7.783398s
- selma-document-huge      4.602  (± 0.0%) i/s -     23.000  in   5.002870s
+         sanitize-sm    155.074 (± 1.9%) i/s -      4.665k in  30.092214s
+            selma-sm      1.290k (± 1.3%) i/s -     38.808k in  30.085333s
+
+Comparison:
+            selma-sm:     1290.1 i/s
+         sanitize-sm:      155.1 i/s - 8.32x  slower
+
+input size = 86686 bytes, 0.09 MB
+
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-sanitize-document-medium
-                         2.000  i/100ms
-selma-document-medium
-                        22.000  i/100ms
+         sanitize-md     3.000 i/100ms
+            selma-md    33.000 i/100ms
 Calculating -------------------------------------
-sanitize-document-medium
-                         28.676  (± 3.5%) i/s -    144.000  in   5.024669s
-selma-document-medium
-                        121.500  (±22.2%) i/s -    594.000  in   5.135410s
+         sanitize-md     40.321 (± 5.0%) i/s -      1.206k in  30.004711s
+            selma-md    337.417 (± 1.5%) i/s -     10.131k in  30.032772s
+
+Comparison:
+            selma-md:      337.4 i/s
+         sanitize-md:       40.3 i/s - 8.37x  slower
+
+input size = 7172510 bytes, 7.17 MB
+
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-sanitize-document-small
-                        10.000  i/100ms
-selma-document-small    20.000  i/100ms
+         sanitize-lg     1.000 i/100ms
+            selma-lg     1.000 i/100ms
 Calculating -------------------------------------
-sanitize-document-small
-                        107.280  (± 0.9%) i/s -    540.000  in   5.033850s
-selma-document-small    118.867  (±31.1%) i/s -    540.000  in   5.080726s
+         sanitize-lg      0.144 (± 0.0%) i/s -      5.000 in  34.772526s
+            selma-lg      4.026 (± 0.0%) i/s -    121.000 in  30.067415s
+
+Comparison:
+            selma-lg:        4.0 i/s
+         sanitize-lg:        0.1 i/s - 27.99x  slower
 </pre>
 </details>
+<!-- prettier-ignore-end -->
+
+## Benchmarks for just the rewriting process
+
+Comparing Selma against popular Ruby HTML parsing gems:
+
+<!-- prettier-ignore-start -->
+<details>
+<pre>
+
+input size = 25309 bytes, 0.03 MB
+
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
+Warming up --------------------------------------
+         nokogiri-sm    79.000 i/100ms
+       nokolexbor-sm   285.000 i/100ms
+            selma-sm   244.000 i/100ms
+Calculating -------------------------------------
+         nokogiri-sm    807.790 (± 3.1%) i/s -     24.253k in  30.056301s
+       nokolexbor-sm      2.880k (± 6.4%) i/s -     86.070k in  30.044766s
+            selma-sm      2.508k (± 1.2%) i/s -     75.396k in  30.068792s
+
+Comparison:
+       nokolexbor-sm:     2880.3 i/s
+            selma-sm:     2507.8 i/s - 1.15x  slower
+         nokogiri-sm:      807.8 i/s - 3.57x  slower
+
+input size = 86686 bytes, 0.09 MB
+
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
+Warming up --------------------------------------
+         nokogiri-md     8.000 i/100ms
+       nokolexbor-md    43.000 i/100ms
+            selma-md    39.000 i/100ms
+Calculating -------------------------------------
+         nokogiri-md     87.367 (± 3.4%) i/s -      2.624k in  30.061642s
+       nokolexbor-md    438.782 (± 3.9%) i/s -     13.158k in  30.031163s
+            selma-md    392.591 (± 3.1%) i/s -     11.778k in  30.031391s
+
+Comparison:
+       nokolexbor-md:      438.8 i/s
+            selma-md:      392.6 i/s - 1.12x  slower
+         nokogiri-md:       87.4 i/s - 5.02x  slower
+
+input size = 7172510 bytes, 7.17 MB
+
+ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
+Warming up --------------------------------------
+         nokogiri-lg     1.000 i/100ms
+       nokolexbor-lg     1.000 i/100ms
+            selma-lg     1.000 i/100ms
+Calculating -------------------------------------
+         nokogiri-lg      0.895 (± 0.0%) i/s -     27.000 in  30.300832s
+       nokolexbor-lg      2.163 (± 0.0%) i/s -     65.000 in  30.085656s
+            selma-lg      5.867 (± 0.0%) i/s -    176.000 in  30.006240s
+
+Comparison:
+            selma-lg:        5.9 i/s
+       nokolexbor-lg:        2.2 i/s - 2.71x  slower
+         nokogiri-lg:        0.9 i/s - 6.55x  slower
+</pre>
+</details>
+<!-- prettier-ignore-end -->
 
 ## Contributing
 

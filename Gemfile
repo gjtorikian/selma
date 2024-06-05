@@ -28,13 +28,9 @@ group :lint do
 end
 
 group :benchmark do
-  # benchmark stuff
   gem "benchmark-ips"
-  gem "commonmarker"
-  gem "gemoji"
-  gem "html-pipeline"
-  gem "rouge"
-  gem "sanitize", "~> 6.0"
+  gem "nokolexbor"
+  gem "sanitize"
 end
 
 gem "ruby-lsp", "~> 0.11", group: :development
