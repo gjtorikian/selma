@@ -233,7 +233,7 @@ Comparison:
 </details>
 <!-- prettier-ignore-end -->
 
-## Benchmarks for just the rewriting process
+### Benchmarks for just the rewriting process
 
 Comparing Selma against popular Ruby HTML parsing gems:
 
