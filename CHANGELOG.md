@@ -1,3 +1,23 @@
+# [v0.3.0] - 07-06-2024
+## What's Changed
+* Bump enum-iterator from 1.4.1 to 1.5.0 by @dependabot in https://github.com/gjtorikian/selma/pull/41
+* Bump actions/cache from 3 to 4 by @dependabot in https://github.com/gjtorikian/selma/pull/42
+* Bump enum-iterator from 1.5.0 to 2.0.0 by @dependabot in https://github.com/gjtorikian/selma/pull/44
+* Bump lol_html from 1.2.0 to 1.2.1 by @dependabot in https://github.com/gjtorikian/selma/pull/45
+* Bump magnus from 0.6.2 to 0.6.3 by @dependabot in https://github.com/gjtorikian/selma/pull/46
+* Bump enum-iterator from 2.0.0 to 2.0.1 by @dependabot in https://github.com/gjtorikian/selma/pull/47
+* Bump enum-iterator from 2.0.1 to 2.1.0 by @dependabot in https://github.com/gjtorikian/selma/pull/48
+* Bump magnus from 0.6.3 to 0.6.4 by @dependabot in https://github.com/gjtorikian/selma/pull/49
+* Update bin/console to be able to run the gem by @digitalmoksha in https://github.com/gjtorikian/selma/pull/51
+* Add details tag to RELAXED config by @digitalmoksha in https://github.com/gjtorikian/selma/pull/52
+* Fix example in README by @digitalmoksha in https://github.com/gjtorikian/selma/pull/53
+* Fix and remove old benchmark code by @digitalmoksha in https://github.com/gjtorikian/selma/pull/50
+* Add support for :all protocols by @gjtorikian in https://github.com/gjtorikian/selma/pull/55
+
+## New Contributors
+* @digitalmoksha made their first contribution in https://github.com/gjtorikian/selma/pull/51
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.2.2...v0.3.0
 ## [v0.2.2] - 03-01-2024
 ## What's Changed
 * Updates for Ruby 3.3 / Rust 1.75 by @gjtorikian in https://github.com/gjtorikian/selma/pull/37
