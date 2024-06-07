@@ -252,6 +252,24 @@ module Selma
           assert_equal("<a>Footnote 1</a>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
+        def test_should_allow_all_protocols_if_asked
+          input = <<~HTML
+            <a href="/foo/bar">Link</a>
+            <a href="http://wow.com/foo/bar">Link</a>
+            <a href="https://wow.com/foo/bar">Link</a>
+            <a href="ftp://wow.com/foo/bar">Link</a>
+            <a href="ssh://127.0.0.1">Link</a>
+          HTML
+
+          sanitizer = Selma::Sanitizer.new({
+            elements: ["a"],
+            attributes: { "a" => ["href"] },
+            protocols: { "a" => { "href" => :all } },
+          })
+
+          assert_equal(input, Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
+        end
+
         def test_should_remove_the_contents_of_filtered_nodes_when_remove_contents_is_true
           sanitizer = Selma::Sanitizer.new({ remove_contents: true })
 

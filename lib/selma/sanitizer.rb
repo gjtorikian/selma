@@ -66,7 +66,12 @@ module Selma
     end
 
     def allow_protocol(element, attr, protos)
-      protos = [protos] unless protos.is_a?(Array)
+      if protos.is_a?(Array)
+        raise ArgumentError, "`:all` must be passed outside of an array" if protos.include?(:all)
+      else
+        protos = [protos]
+      end
+
       set_allowed_protocols(element, attr, protos)
     end
 

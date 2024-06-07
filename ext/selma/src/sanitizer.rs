@@ -211,20 +211,23 @@ impl SelmaSanitizer {
                     }
                     Some(protocol_list) => protocol_list.push(allowed_protocol.to_string()),
                 }
-            } else if allowed_protocol.is_kind_of(class::symbol())
-                && allowed_protocol.inspect() == ":relative"
-            {
-                match protocol_list {
-                    None => {
-                        protocol_sanitizers.insert(
-                            attr_name.to_string(),
-                            vec!["#".to_string(), "/".to_string()],
-                        );
+            } else if allowed_protocol.is_kind_of(class::symbol()) {
+                let protocol_config = allowed_protocol.inspect();
+                if protocol_config == ":relative" {
+                    match protocol_list {
+                        None => {
+                            protocol_sanitizers.insert(
+                                attr_name.to_string(),
+                                vec!["#".to_string(), "/".to_string()],
+                            );
+                        }
+                        Some(protocol_list) => {
+                            protocol_list.push("#".to_string());
+                            protocol_list.push("/".to_string());
+                        }
                     }
-                    Some(protocol_list) => {
-                        protocol_list.push("#".to_string());
-                        protocol_list.push("/".to_string());
-                    }
+                } else if protocol_config == ":all" {
+                    protocol_sanitizers.insert(attr_name.to_string(), vec!["all".to_string()]);
                 }
             }
         }
@@ -388,6 +391,10 @@ impl SelmaSanitizer {
     }
 
     fn has_allowed_protocol(protocols_allowed: &[String], attr_val: &String) -> bool {
+        if protocols_allowed.contains(&"all".to_string()) {
+            return true;
+        }
+
         // FIXME: is there a more idiomatic way to do this?
         let mut pos: usize = 0;
         let mut chars = attr_val.chars();
