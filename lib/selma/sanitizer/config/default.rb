@@ -28,7 +28,7 @@ module Selma
 
         # URL handling protocols to allow in specific attributes. By default, no
         # protocols are allowed. Use :relative in place of a protocol if you want
-        # to allow relative URLs sans protocol.
+        # to allow relative URLs sans protocol. Set to `:all` to allow any protocol.
         protocols: {},
 
         # An Array of element names whose contents will be removed. The contents
