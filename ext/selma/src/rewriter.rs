@@ -151,29 +151,29 @@ impl SelmaRewriter {
 
     /// Perform HTML rewrite sequence.
     fn rewrite(&self, html: String) -> Result<String, magnus::Error> {
-        let sanitized_html = match &self.0.borrow().sanitizer {
-            None => Ok(html),
-            Some(sanitizer) => {
-                let sanitized_html = match Self::perform_sanitization(sanitizer, &html) {
-                    Ok(sanitized_html) => sanitized_html,
-                    Err(err) => return Err(err),
-                };
-
-                String::from_utf8(sanitized_html)
-            }
-        };
         let binding = self.0.borrow_mut();
         let handlers = &binding.handlers;
+        let sanitizer = &binding.sanitizer;
 
-        match Self::perform_handler_rewrite(self, handlers, sanitized_html.unwrap()) {
-            Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
-            Err(err) => Err(err),
-        }
+        let rewritten_html = match Self::perform_handler_rewrite(self, handlers, html) {
+            Ok(html) => html,
+            Err(err) => return Err(err),
+        };
+
+        let sanitized_html = match sanitizer {
+            None => rewritten_html,
+            Some(sanitizer) => match Self::perform_sanitization(sanitizer, &rewritten_html) {
+                Ok(sanitized_html) => sanitized_html,
+                Err(err) => return Err(err),
+            },
+        };
+
+        Ok(String::from_utf8(sanitized_html).expect("string should be valid utf8"))
     }
 
     fn perform_sanitization(
         sanitizer: &SelmaSanitizer,
-        html: &String,
+        html: &Vec<u8>,
     ) -> Result<Vec<u8>, magnus::Error> {
         let mut first_pass_html = vec![];
         {
@@ -209,7 +209,7 @@ impl SelmaRewriter {
                 |c: &[u8]| first_pass_html.extend_from_slice(c),
             );
 
-            let result = rewriter.write(html.as_bytes());
+            let result = rewriter.write(html);
             if result.is_err() {
                 return Err(magnus::Error::new(
                     exception::runtime_error(),
