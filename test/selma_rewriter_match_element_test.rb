@@ -23,11 +23,15 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   end
 
   def test_that_it_works_with_sanitizer
-    sanitizer = Selma::Sanitizer.new(Selma::Sanitizer::Config::RELAXED)
+    config = {
+      elements: ["strong"],
+    }
+    sanitizer = Selma::Sanitizer.new(config)
     frag = "<malarky><strong><junk>Wow!</junk></strong></malarky>"
     modified_doc = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [Handler.new]).rewrite(frag)
 
-    assert_equal('<strong class="boldy">Wow!</strong>', modified_doc)
+    # note that sanitization occurs *after* rewriting
+    assert_equal("<strong>Wow!</strong>", modified_doc)
   end
 
   class FirstRewrite
