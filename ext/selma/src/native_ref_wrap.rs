@@ -1,15 +1,19 @@
-use std::{cell::Cell, marker::PhantomData, rc::Rc};
+use std::{
+    cell::RefCell,
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
 
 // NOTE: My Rust isn't good enough to know what any of this does,
 // but it was taken from https://github.com/cloudflare/lol-html/blob/1a1ab2e2bf896f815fe8888ed78ccdf46d7c6b85/js-api/src/lib.rs#LL38
 
 pub struct Anchor<'r> {
-    poisoned: Rc<Cell<bool>>,
+    poisoned: Arc<Mutex<bool>>,
     lifetime: PhantomData<&'r mut ()>,
 }
 
 impl<'r> Anchor<'r> {
-    pub fn new(poisoned: Rc<Cell<bool>>) -> Self {
+    pub fn new(poisoned: Arc<Mutex<bool>>) -> Self {
         Anchor {
             poisoned,
             lifetime: PhantomData,
@@ -31,17 +35,17 @@ impl<'r> Anchor<'r> {
 // object results in exception.
 pub struct NativeRefWrap<R> {
     inner_ptr: *mut R,
-    poisoned: Rc<Cell<bool>>,
+    poisoned: Arc<Mutex<bool>>,
 }
 
 impl<R> NativeRefWrap<R> {
     pub fn wrap<I>(inner: &I) -> (Self, Anchor) {
         let wrap = NativeRefWrap {
             inner_ptr: inner as *const I as *mut R,
-            poisoned: Rc::new(Cell::new(false)),
+            poisoned: Arc::new(Mutex::new(false)),
         };
 
-        let anchor = Anchor::new(Rc::clone(&wrap.poisoned));
+        let anchor = Anchor::new(Arc::clone(&wrap.poisoned));
 
         (wrap, anchor)
     }
@@ -49,10 +53,10 @@ impl<R> NativeRefWrap<R> {
     pub fn wrap_mut<I>(inner: &mut I) -> (Self, Anchor) {
         let wrap = NativeRefWrap {
             inner_ptr: inner as *mut I as *mut R,
-            poisoned: Rc::new(Cell::new(false)),
+            poisoned: Arc::new(Mutex::new(false)),
         };
 
-        let anchor = Anchor::new(Rc::clone(&wrap.poisoned));
+        let anchor = Anchor::new(Arc::clone(&wrap.poisoned));
 
         (wrap, anchor)
     }
@@ -70,7 +74,8 @@ impl<R> NativeRefWrap<R> {
     }
 
     fn assert_not_poisoned(&self) -> Result<(), &'static str> {
-        if self.poisoned.get() {
+        let lock = self.poisoned.lock().unwrap();
+        if *lock {
             Err("The object has been freed and can't be used anymore.")
         } else {
             Ok(())
