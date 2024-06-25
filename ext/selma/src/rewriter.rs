@@ -7,10 +7,16 @@ use magnus::{
     exception, function, method, scan_args,
     typed_data::Obj,
     value::{Opaque, ReprValue},
-    Module, Object, RArray, RModule, Ruby, Value,
+    IntoValue, Module, Object, RArray, RModule, Ruby, Value,
 };
 
-use std::{borrow::Cow, cell::RefCell, primitive::str, rc::Rc};
+use std::{
+    borrow::{BorrowMut, Cow},
+    cell::RefCell,
+    ops::Deref,
+    primitive::str,
+    rc::Rc,
+};
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag, text_chunk::SelmaHTMLTextChunk},
@@ -19,9 +25,26 @@ use crate::{
     tags::Tag,
 };
 
+#[derive(Copy, Clone)]
+pub struct ObjectValue {
+    pub inner: Opaque<Value>,
+}
+
+impl IntoValue for ObjectValue {
+    fn into_value_with(self, _: &Ruby) -> Value {
+        Ruby::get().unwrap().get_inner(self.inner)
+    }
+}
+
+impl From<Value> for ObjectValue {
+    fn from(v: Value) -> Self {
+        Self { inner: v.into() }
+    }
+}
+
 #[derive(Clone)]
 pub struct Handler {
-    rb_handler: Opaque<Value>,
+    rb_handler: ObjectValue,
     rb_selector: Opaque<Obj<SelmaSelector>>,
     // total_element_handler_calls: usize,
     // total_elapsed_element_handlers: f64,
@@ -60,13 +83,13 @@ impl SelmaRewriter {
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
                 let wrapped_sanitizer = Obj::wrap(default_sanitizer);
                 wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                Some(wrapped_sanitizer.get().to_owned())
+                Some(wrapped_sanitizer.deref().to_owned())
             }
             Some(sanitizer_value) => match sanitizer_value {
                 None => None, // no `sanitizer:` provided, use default
                 Some(sanitizer) => {
                     sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                    Some(sanitizer.get().to_owned())
+                    Some(sanitizer.deref().to_owned())
                 }
             },
         };
@@ -101,7 +124,7 @@ impl SelmaRewriter {
                         Ok(rb_selector) => rb_selector,
                     };
                     let handler = Handler {
-                        rb_handler: Opaque::from(rb_handler),
+                        rb_handler: ObjectValue::from(rb_handler),
                         rb_selector: Opaque::from(rb_selector),
                         // total_element_handler_calls: 0,
                         // total_elapsed_element_handlers: 0.0,
@@ -275,7 +298,7 @@ impl SelmaRewriter {
                     selector.match_element().unwrap(),
                     move |el| {
                         match Self::process_element_handlers(
-                            ruby.get_inner(handler.rb_handler),
+                            handler.rb_handler,
                             el,
                             &closure_element_stack.borrow(),
                         ) {
@@ -307,8 +330,7 @@ impl SelmaRewriter {
                         }
 
                         let ruby = Ruby::get().unwrap();
-                        match Self::process_text_handlers(ruby.get_inner(handler.rb_handler), text)
-                        {
+                        match Self::process_text_handlers(handler.rb_handler, text) {
                             Ok(_) => Ok(()),
                             Err(err) => Err(err.to_string().into()),
                         }
@@ -364,10 +386,12 @@ impl SelmaRewriter {
     }
 
     fn process_element_handlers(
-        rb_handler: Value,
+        obj_rb_handler: ObjectValue,
         element: &mut Element,
         ancestors: &[String],
     ) -> Result<(), magnus::Error> {
+        let rb_handler = Ruby::get().unwrap().get_inner(obj_rb_handler.inner);
+
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
             // TODO: error here is an "EndTagError"
@@ -394,9 +418,11 @@ impl SelmaRewriter {
     }
 
     fn process_text_handlers(
-        rb_handler: Value,
+        obj_rb_handler: ObjectValue,
         text_chunk: &mut TextChunk,
     ) -> Result<(), magnus::Error> {
+        let rb_handler = Ruby::get().unwrap().get_inner(obj_rb_handler.inner);
+
         // prevents missing `handle_text_chunk` function
         let content = text_chunk.as_str();
 
