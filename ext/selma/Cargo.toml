@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 enum-iterator = "2.1"
 escapist = "0.0.2"
-magnus = "0.6"
+magnus = "0.7"
 lol_html = "1.2"
 
 [lib]
