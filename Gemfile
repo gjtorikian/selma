@@ -5,8 +5,6 @@ source "https://rubygems.org"
 # Specified gem's dependencies in selma.gemspec
 gemspec
 
-gem "github_changelog_generator", "~> 1.16"
-
 group :debug do
   gem "amazing_print"
   gem "debug"
