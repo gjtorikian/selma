@@ -180,6 +180,19 @@ The `element` argument in `handle_element` has the following methods:
 - `after(content, as: content_type)`: Inserts `content` after the text. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `replace(content, as: content_type)`: Replaces the text node with `content`. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 
+## Security
+
+Theoretically, a malicious user can provide a very large document for processing, which can exhaust the memory of the host machine. To set a limit on how much string content is processed at once, you can provide two options into the `memory` namespace:
+
+```ruby
+memory: {
+  max_allowed_memory_usage: 1000,
+  preallocated_parsing_buffer_size: 100,
+},
+```
+
+Note that `preallocated_parsing_buffer_size` must always be less than `max_allowed_memory_usage`. See [the`lol_html` project documentation](https://docs.rs/lol_html/1.2.1/lol_html/struct.MemorySettings.html) to learn more about the default values.
+
 ## Benchmarks
 
 When `bundle exec rake benchmark`, two different benchmarks are calculated. Here are those results on my machine.

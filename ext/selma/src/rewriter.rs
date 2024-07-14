@@ -1,18 +1,21 @@
 use lol_html::{
     doc_comments, doctype, element,
     html_content::{Element, TextChunk},
-    text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, Selector, Settings,
+    text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, MemorySettings, Selector,
+    Settings,
 };
 use magnus::{
-    exception, function, method, scan_args,
+    exception, function, method,
+    r_hash::ForEach,
+    scan_args,
     typed_data::Obj,
     value::{Opaque, ReprValue},
-    IntoValue, Module, Object, RArray, RModule, Ruby, Value,
+    Integer, IntoValue, Module, Object, RArray, RHash, RModule, Ruby, Symbol, Value,
 };
 
 use std::{
-    borrow::{BorrowMut, Cow},
-    cell::RefCell,
+    borrow::Cow,
+    cell::{Ref, RefCell},
     ops::Deref,
     primitive::str,
     rc::Rc,
@@ -53,16 +56,25 @@ pub struct Handler {
     // total_elapsed_text_handlers: f64,
 }
 
+struct RewriterOptions {
+    memory_options: MemorySettings,
+}
+
 pub struct Rewriter {
     sanitizer: Option<SelmaSanitizer>,
     handlers: Vec<Handler>,
+    options: RewriterOptions,
     // total_elapsed: f64,
 }
 
 #[magnus::wrap(class = "Selma::Rewriter")]
 pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
 
-type RewriterValues = (Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>);
+type RewriterValues = (
+    Option<Option<Obj<SelmaSanitizer>>>,
+    Option<RArray>,
+    Option<RHash>,
+);
 
 impl SelmaRewriter {
     const SELMA_ON_END_TAG: &'static str = "on_end_tag";
@@ -73,9 +85,10 @@ impl SelmaRewriter {
     /// @def new(sanitizer: Selma::Sanitizer.new(Selma::Sanitizer::Config::DEFAULT), handlers: [])
     /// @param sanitizer [Selma::Sanitizer] The sanitizer which performs the initial cleanup
     /// @param handlers  [Array<Selma::Selector>] The handlers to use to perform HTML rewriting
+    /// @param options  [Hash] Any additional options to pass to the rewriter
     /// @return [Selma::Rewriter]
     fn new(args: &[Value]) -> Result<Self, magnus::Error> {
-        let (rb_sanitizer, rb_handlers) = Self::scan_parse_args(args)?;
+        let (rb_sanitizer, rb_handlers, rb_options) = Self::scan_parse_args(args)?;
 
         let sanitizer = match rb_sanitizer {
             None => {
@@ -145,9 +158,88 @@ impl SelmaRewriter {
             ));
         }
 
+        let mut rewriter_options = RewriterOptions::new();
+
+        match rb_options {
+            None => {}
+            Some(options) => {
+                options.foreach(|key: Symbol, value: RHash| {
+                    let key = key.to_string();
+                    match key.as_str() {
+                        "memory" => {
+                            let max_allowed_memory_usage = value.get(Symbol::new("max_allowed_memory_usage"));
+                            if max_allowed_memory_usage.is_some() {
+                                let max_allowed_memory_usage = max_allowed_memory_usage.unwrap();
+                                let max_allowed_memory_usage =
+                                    Integer::from_value(max_allowed_memory_usage);
+                                if max_allowed_memory_usage.is_some() {
+                                    match max_allowed_memory_usage.unwrap().to_u64() {
+                                        Ok(max_allowed_memory_usage) => {
+                                            rewriter_options.memory_options.max_allowed_memory_usage =
+                                                max_allowed_memory_usage as usize;
+                                        }
+                                        Err(_e) => {
+                                            return Err(magnus::Error::new(
+                                                exception::arg_error(),
+                                                "max_allowed_memory_usage must be a positive integer",
+                                            ));
+                                        }
+                                    }
+                                } else {
+                                    rewriter_options.memory_options.max_allowed_memory_usage = MemorySettings::default().max_allowed_memory_usage;
+                                }
+                            }
+
+                            let preallocated_parsing_buffer_size = value.get(Symbol::new("preallocated_parsing_buffer_size"));
+                            if preallocated_parsing_buffer_size.is_some() {
+                                let preallocated_parsing_buffer_size = preallocated_parsing_buffer_size.unwrap();
+                                let preallocated_parsing_buffer_size =
+                                    Integer::from_value(preallocated_parsing_buffer_size);
+                                if preallocated_parsing_buffer_size.is_some() {
+                                    match preallocated_parsing_buffer_size.unwrap().to_u64() {
+                                        Ok(preallocated_parsing_buffer_size) => {
+                                            rewriter_options.memory_options.preallocated_parsing_buffer_size =
+                                                preallocated_parsing_buffer_size as usize;
+                                        }
+                                        Err(_e) => {
+                                            return Err(magnus::Error::new(
+                                                exception::arg_error(),
+                                                "preallocated_parsing_buffer_size must be a positive integer",
+                                            ));
+                                        }
+                                    }
+                                } else {
+                                    rewriter_options.memory_options.preallocated_parsing_buffer_size = MemorySettings::default().preallocated_parsing_buffer_size;
+                                }
+                            }
+                        }
+                        _ => {
+                            return Err(magnus::Error::new(
+                                exception::arg_error(),
+                                format!("Unknown option: {key:?}"),
+                            ));
+                        }
+                    }
+                    Ok(ForEach::Continue)
+                })?;
+            }
+        }
+
+        if rewriter_options
+            .memory_options
+            .preallocated_parsing_buffer_size
+            > rewriter_options.memory_options.max_allowed_memory_usage
+        {
+            return Err(magnus::Error::new(
+                exception::arg_error(),
+                "max_allowed_memory_usage must be greater than preallocated_parsing_buffer_size",
+            ));
+        }
+
         Ok(Self(std::cell::RefCell::new(Rewriter {
             sanitizer,
             handlers,
+            options: rewriter_options,
             // total_elapsed: 0.0,
         })))
     }
@@ -164,20 +256,26 @@ impl SelmaRewriter {
         let kwargs = scan_args::get_kwargs::<
             _,
             (),
-            (Option<Option<Obj<SelmaSanitizer>>>, Option<RArray>),
+            (
+                Option<Option<Obj<SelmaSanitizer>>>,
+                Option<RArray>,
+                Option<RHash>,
+            ),
             (),
-        >(args.keywords, &[], &["sanitizer", "handlers"])?;
-        let (rb_sanitizer, rb_handlers) = kwargs.optional;
+        >(args.keywords, &[], &["sanitizer", "handlers", "options"])?;
+        let (rb_sanitizer, rb_handlers, rb_options) = kwargs.optional;
 
-        Ok((rb_sanitizer, rb_handlers))
+        Ok((rb_sanitizer, rb_handlers, rb_options))
     }
 
     /// Perform HTML rewrite sequence.
     fn rewrite(&self, html: String) -> Result<String, magnus::Error> {
-        let sanitized_html = match &self.0.borrow().sanitizer {
+        let binding = self.0.borrow();
+
+        let sanitized_html = match &binding.sanitizer {
             None => Ok(html),
             Some(sanitizer) => {
-                let sanitized_html = match Self::perform_sanitization(sanitizer, &html) {
+                let sanitized_html = match Self::perform_sanitization(&binding, sanitizer, &html) {
                     Ok(sanitized_html) => sanitized_html,
                     Err(err) => return Err(err),
                 };
@@ -185,7 +283,7 @@ impl SelmaRewriter {
                 String::from_utf8(sanitized_html)
             }
         };
-        let binding = self.0.borrow_mut();
+
         let handlers = &binding.handlers;
 
         match Self::perform_handler_rewrite(self, handlers, sanitized_html.unwrap()) {
@@ -195,6 +293,7 @@ impl SelmaRewriter {
     }
 
     fn perform_sanitization(
+        binding: &Ref<Rewriter>,
         sanitizer: &SelmaSanitizer,
         html: &String,
     ) -> Result<Vec<u8>, magnus::Error> {
@@ -213,6 +312,7 @@ impl SelmaRewriter {
                     Ok(())
                 }));
             }
+
             let mut rewriter = HtmlRewriter::new(
                 Settings {
                     document_content_handlers,
@@ -226,19 +326,21 @@ impl SelmaRewriter {
                             Err(err) => Err(err.to_string().into()),
                         }
                     })],
-                    // TODO: allow for MemorySettings to be defined
+                    memory_settings: Self::get_memory_options(binding),
                     ..Settings::default()
                 },
                 |c: &[u8]| first_pass_html.extend_from_slice(c),
             );
 
-            let result = rewriter.write(html.as_bytes());
-            if result.is_err() {
-                return Err(magnus::Error::new(
-                    exception::runtime_error(),
-                    format!("Failed to sanitize HTML: {}", result.unwrap_err()),
-                ));
-            }
+            match rewriter.write(html.as_bytes()) {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(magnus::Error::new(
+                        exception::runtime_error(),
+                        format!("Failed to sanitize HTML: {}", err),
+                    ))
+                }
+            };
         }
 
         let mut output = vec![];
@@ -258,6 +360,7 @@ impl SelmaRewriter {
             let mut rewriter = HtmlRewriter::new(
                 Settings {
                     element_content_handlers,
+                    memory_settings: Self::get_memory_options(binding),
                     ..Settings::default()
                 },
                 |c: &[u8]| output.extend_from_slice(c),
@@ -329,7 +432,6 @@ impl SelmaRewriter {
                             }
                         }
 
-                        let ruby = Ruby::get().unwrap();
                         match Self::process_text_handlers(handler.rb_handler, text) {
                             Ok(_) => Ok(()),
                             Err(err) => Err(err.to_string().into()),
@@ -363,11 +465,13 @@ impl SelmaRewriter {
             }));
         });
 
+        let binding = &self.0.borrow();
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
                 Settings {
                     element_content_handlers,
+                    memory_settings: Self::get_memory_options(binding),
                     ..Settings::default()
                 },
                 |c: &[u8]| output.extend_from_slice(c),
@@ -438,6 +542,22 @@ impl SelmaRewriter {
                 exception::runtime_error(),
                 format!("{err:?}"),
             )),
+        }
+    }
+
+    fn get_memory_options(binding: &Ref<Rewriter>) -> MemorySettings {
+        let options = &binding.options.memory_options;
+        MemorySettings {
+            max_allowed_memory_usage: options.max_allowed_memory_usage,
+            preallocated_parsing_buffer_size: options.preallocated_parsing_buffer_size,
+        }
+    }
+}
+
+impl RewriterOptions {
+    pub fn new() -> Self {
+        Self {
+            memory_options: MemorySettings::default(),
         }
     }
 }
