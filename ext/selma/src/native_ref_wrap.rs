@@ -4,8 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-// NOTE: My Rust isn't good enough to know what any of this does,
-// but it was taken from https://github.com/cloudflare/lol-html/blob/1a1ab2e2bf896f815fe8888ed78ccdf46d7c6b85/js-api/src/lib.rs#LL38
+// NOTE: this was taken from https://github.com/cloudflare/lol-html/blob/1a1ab2e2bf896f815fe8888ed78ccdf46d7c6b85/js-api/src/lib.rs#LL38
 
 pub struct Anchor<'r> {
     poisoned: Arc<Mutex<bool>>,
