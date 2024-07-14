@@ -119,11 +119,13 @@ impl SelmaHTMLElement {
                 .iter()
                 .for_each(|attr| match hash.aset(attr.name(), attr.value()) {
                     Ok(_) => {}
-                    Err(err) => Err(Error::new(
-                        exception::runtime_error(),
-                        format!("AttributeNameError: {err:?}"),
-                    ))
-                    .unwrap(),
+                    Err(err) => panic!(
+                        "{:?}",
+                        Error::new(
+                            exception::runtime_error(),
+                            format!("AttributeNameError: {err:?}"),
+                        )
+                    ),
                 });
         }
         Ok(hash)
@@ -139,7 +141,10 @@ impl SelmaHTMLElement {
             .for_each(|ancestor| match array.push(RString::new(ancestor)) {
                 Ok(_) => {}
                 Err(err) => {
-                    Err(Error::new(exception::runtime_error(), format!("{err:?}"))).unwrap()
+                    panic!(
+                        "{:?}",
+                        Error::new(exception::runtime_error(), format!("{err:?}"))
+                    )
                 }
             });
 

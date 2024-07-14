@@ -338,7 +338,7 @@ impl SelmaSanitizer {
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
         attr_name: &String,
-        attr_val: &String,
+        attr_val: &str,
     ) -> Result<bool, AttributeNameError> {
         let mut allowed: bool = false;
         let element_allowed_attrs = element_sanitizer.allowed_attrs.contains(attr_name);
@@ -390,7 +390,7 @@ impl SelmaSanitizer {
         attr_val.contains("://")
     }
 
-    fn has_allowed_protocol(protocols_allowed: &[String], attr_val: &String) -> bool {
+    fn has_allowed_protocol(protocols_allowed: &[String], attr_val: &str) -> bool {
         if protocols_allowed.contains(&"all".to_string()) {
             return true;
         }
@@ -549,7 +549,7 @@ impl SelmaSanitizer {
     ) -> &'a mut ElementSanitizer {
         element_sanitizers
             .entry(element_name.to_string())
-            .or_insert_with(ElementSanitizer::default)
+            .or_default()
     }
 }
 

@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -22,7 +21,7 @@ impl<'r> Anchor<'r> {
 
 // impl Drop for Anchor<'_> {
 //     fn drop(&mut self) {
-//         self.poisoned.replace(true);
+//         *self.poisoned.lock().unwrap() = true;
 //     }
 // }
 
