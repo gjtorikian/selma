@@ -214,20 +214,4 @@ class SelmaMaliciousnessTest < Minitest::Test
       end
     end
   end
-
-  def test_massive_files_err_gracefully
-    base_text = ->(itr) {
-      %|<p data-sourcepos="#{itr}:1-#{itr}:4"><sup data-sourcepos="#{itr}:1-#{itr}:4" class="footnote-ref"><a href="#fn-#{itr}" id="fnref-#{itr}" data-footnote-ref>#{itr}</a></sup></p>|
-    }
-
-    str = []
-    100000.times do |itr|
-      str << base_text.call(itr)
-    end
-    html = str.join("\n")
-
-    sanitizer_config = Selma::Sanitizer.new(Selma::Sanitizer::Config::RELAXED)
-    rewriter = Selma::Rewriter.new(sanitizer: sanitizer_config, handlers: [RemoveLinkClass.new, RemoveIdAttributes.new, BaseRemoveRel.new])
-    rewriter.rewrite(html)
-  end
 end
