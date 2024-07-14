@@ -331,6 +331,8 @@ impl SelmaRewriter {
         }
     }
 
+    // to get rid of some really nasty edge cases with dangerous tags, we perform one more
+    // sanitization pass at the end
     fn perform_final_sanitization(
         &self,
         sanitizer: &SelmaSanitizer,
@@ -350,33 +352,15 @@ impl SelmaRewriter {
             }));
         }
 
-        let binding = &self.0.borrow();
-        let mut output = vec![];
-        {
-            let mut rewriter = HtmlRewriter::new(
-                Settings {
-                    element_content_handlers,
-                    memory_settings: Self::get_memory_options(binding),
-                    ..Settings::default()
-                },
-                |c: &[u8]| output.extend_from_slice(c),
-            );
-            match rewriter.write(&html) {
-                Ok(_) => {}
-                Err(err) => {
-                    return Err(magnus::Error::new(
-                        exception::runtime_error(),
-                        format!("{err:?}"),
-                    ));
-                }
-            }
-        }
-        match String::from_utf8(output) {
-            Ok(output) => Ok(output),
-            Err(err) => Err(magnus::Error::new(
-                exception::runtime_error(),
-                format!("{err:?}"),
-            )),
+        match Self::run_rewrite(self, vec![], element_content_handlers, html.as_slice()) {
+            Ok(rewritten_html) => match String::from_utf8(rewritten_html) {
+                Ok(output) => Ok(output),
+                Err(err) => Err(magnus::Error::new(
+                    exception::runtime_error(),
+                    format!("{err:?}"),
+                )),
+            },
+            Err(err) => Err(err),
         }
     }
 
@@ -471,19 +455,33 @@ impl SelmaRewriter {
 
         element_content_handlers.extend(sanitizer_initial_element_content_handlers);
 
+        Self::run_rewrite(
+            self,
+            sanitizer_document_content_handlers,
+            element_content_handlers,
+            html.as_bytes(),
+        )
+    }
+
+    fn run_rewrite(
+        &self,
+        document_content_handlers: Vec<DocumentContentHandlers>,
+        element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
+        html: &[u8],
+    ) -> Result<Vec<u8>, magnus::Error> {
         let binding = &self.0.borrow();
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
                 Settings {
-                    document_content_handlers: sanitizer_document_content_handlers,
+                    document_content_handlers,
                     element_content_handlers,
                     memory_settings: Self::get_memory_options(binding),
                     ..Settings::default()
                 },
                 |c: &[u8]| output.extend_from_slice(c),
             );
-            match rewriter.write(html.as_bytes()) {
+            match rewriter.write(html) {
                 Ok(_) => {}
                 Err(err) => {
                     return Err(magnus::Error::new(
