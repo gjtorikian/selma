@@ -272,91 +272,87 @@ impl SelmaRewriter {
     fn rewrite(&self, html: String) -> Result<String, magnus::Error> {
         let binding = self.0.borrow();
 
-        let sanitized_html = match &binding.sanitizer {
-            None => Ok(html),
-            Some(sanitizer) => {
-                let sanitized_html = match Self::perform_sanitization(&binding, sanitizer, &html) {
-                    Ok(sanitized_html) => sanitized_html,
-                    Err(err) => return Err(err),
-                };
+        let mut sanitizer_document_content_handlers: Vec<DocumentContentHandlers> = vec![];
+        let mut sanitizer_initial_element_content_handlers: Vec<(
+            Cow<Selector>,
+            ElementContentHandlers,
+        )> = vec![];
 
-                String::from_utf8(sanitized_html)
+        match &binding.sanitizer {
+            None => (),
+            Some(sanitizer) => {
+                if !sanitizer.get_allow_doctype() {
+                    sanitizer_document_content_handlers.push(doctype!(|d| {
+                        sanitizer.remove_doctype(d);
+                        Ok(())
+                    }));
+                }
+                if !sanitizer.get_allow_comments() {
+                    sanitizer_document_content_handlers.push(doc_comments!(|c| {
+                        sanitizer.remove_comment(c);
+                        Ok(())
+                    }));
+                }
+                sanitizer_initial_element_content_handlers.push(element!("*", |el| {
+                    sanitizer.try_remove_element(el);
+                    if el.removed() {
+                        return Ok(());
+                    }
+                    match sanitizer.sanitize_attributes(el) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
+                    }
+                }));
             }
         };
 
         let handlers = &binding.handlers;
 
-        match Self::perform_handler_rewrite(self, handlers, sanitized_html.unwrap()) {
-            Ok(rewritten_html) => Ok(String::from_utf8(rewritten_html).unwrap()),
+        match Self::perform_handler_rewrite(
+            self,
+            sanitizer_document_content_handlers,
+            sanitizer_initial_element_content_handlers,
+            handlers,
+            html,
+        ) {
+            Ok(rewritten_html) => match &binding.sanitizer {
+                None => match String::from_utf8(rewritten_html) {
+                    Ok(output) => Ok(output),
+                    Err(err) => Err(magnus::Error::new(
+                        exception::runtime_error(),
+                        format!("{err:?}"),
+                    )),
+                },
+                Some(sanitizer) => {
+                    Self::perform_final_sanitization(self, sanitizer, rewritten_html)
+                }
+            },
             Err(err) => Err(err),
         }
     }
 
-    fn perform_sanitization(
-        binding: &Ref<Rewriter>,
+    fn perform_final_sanitization(
+        &self,
         sanitizer: &SelmaSanitizer,
-        html: &String,
-    ) -> Result<Vec<u8>, magnus::Error> {
-        let mut first_pass_html = vec![];
-        {
-            let mut document_content_handlers: Vec<DocumentContentHandlers> = vec![];
-            if !sanitizer.get_allow_doctype() {
-                document_content_handlers.push(doctype!(|d| {
-                    sanitizer.remove_doctype(d);
-                    Ok(())
-                }));
-            }
-            if !sanitizer.get_allow_comments() {
-                document_content_handlers.push(doc_comments!(|c| {
-                    sanitizer.remove_comment(c);
-                    Ok(())
-                }));
-            }
+        html: Vec<u8>,
+    ) -> Result<String, magnus::Error> {
+        // TODO: this should ideally be done ahead of time on `initialize`, not on every `#rewrite` call
+        let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
 
-            let mut rewriter = HtmlRewriter::new(
-                Settings {
-                    document_content_handlers,
-                    element_content_handlers: vec![element!("*", |el| {
-                        sanitizer.try_remove_element(el);
-                        if el.removed() {
-                            return Ok(());
-                        }
-                        match sanitizer.sanitize_attributes(el) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
-                        }
-                    })],
-                    memory_settings: Self::get_memory_options(binding),
-                    ..Settings::default()
-                },
-                |c: &[u8]| first_pass_html.extend_from_slice(c),
-            );
-
-            match rewriter.write(html.as_bytes()) {
-                Ok(_) => {}
-                Err(err) => {
-                    return Err(magnus::Error::new(
-                        exception::runtime_error(),
-                        format!("Failed to sanitize HTML: {}", err),
-                    ))
+        if sanitizer.get_escape_tagfilter() {
+            element_content_handlers.push(element!(Tag::ESCAPEWORTHY_TAGS_CSS, |el| {
+                let should_remove = sanitizer.allow_element(el);
+                if should_remove {
+                    sanitizer.force_remove_element(el);
                 }
-            };
+
+                Ok(())
+            }));
         }
 
+        let binding = &self.0.borrow();
         let mut output = vec![];
         {
-            let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
-            if sanitizer.get_escape_tagfilter() {
-                element_content_handlers.push(element!(Tag::ESCAPEWORTHY_TAGS_CSS, |el| {
-                    let should_remove = sanitizer.allow_element(el);
-                    if should_remove {
-                        sanitizer.force_remove_element(el);
-                    }
-
-                    Ok(())
-                }));
-            }
-
             let mut rewriter = HtmlRewriter::new(
                 Settings {
                     element_content_handlers,
@@ -365,25 +361,33 @@ impl SelmaRewriter {
                 },
                 |c: &[u8]| output.extend_from_slice(c),
             );
-
-            let result = rewriter.write(first_pass_html.as_slice());
-            if result.is_err() {
-                return Err(magnus::Error::new(
-                    exception::runtime_error(),
-                    format!("Failed to sanitize HTML: {}", result.unwrap_err()),
-                ));
+            match rewriter.write(&html) {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(magnus::Error::new(
+                        exception::runtime_error(),
+                        format!("{err:?}"),
+                    ));
+                }
             }
         }
-
-        Ok(output)
+        match String::from_utf8(output) {
+            Ok(output) => Ok(output),
+            Err(err) => Err(magnus::Error::new(
+                exception::runtime_error(),
+                format!("{err:?}"),
+            )),
+        }
     }
 
     pub fn perform_handler_rewrite(
         &self,
+        sanitizer_document_content_handlers: Vec<DocumentContentHandlers>,
+        sanitizer_initial_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
         handlers: &[Handler],
         html: String,
     ) -> Result<Vec<u8>, magnus::Error> {
-        // TODO: this should ideally be done ahead of time, not on every `#rewrite` call
+        // TODO: this should ideally be done ahead of time on `initialize`, not on every `#rewrite` call
         let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
 
         handlers.iter().for_each(|handler| {
@@ -465,11 +469,14 @@ impl SelmaRewriter {
             }));
         });
 
+        element_content_handlers.extend(sanitizer_initial_element_content_handlers);
+
         let binding = &self.0.borrow();
         let mut output = vec![];
         {
             let mut rewriter = HtmlRewriter::new(
                 Settings {
+                    document_content_handlers: sanitizer_document_content_handlers,
                     element_content_handlers,
                     memory_settings: Self::get_memory_options(binding),
                     ..Settings::default()
