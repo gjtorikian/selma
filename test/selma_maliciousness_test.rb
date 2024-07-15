@@ -167,4 +167,51 @@ class SelmaMaliciousnessTest < Minitest::Test
       Selma::Rewriter.new(sanitizer: sanitizer).rewrite(html)
     end
   end
+
+  class RemoveLinkClass
+    SELECTOR = Selma::Selector.new(match_element: %(a:not([class="anchor"])))
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.remove_attribute("class")
+    end
+  end
+
+  class RemoveIdAttributes
+    SELECTOR = Selma::Selector.new(match_element: %(a[id], li[id]))
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      # footnote ids should not be removed
+      return if element.tag_name == "li"
+      return if element.tag_name == "a"
+
+      # links with generated header anchors should not be removed
+      return if element.tag_name == "a" && element["class"] == "anchor"
+
+      element.remove_attribute("id")
+    end
+  end
+
+  class BaseRemoveRel
+    SELECTOR = Selma::Selector.new(match_element: %(a))
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      # we allow rel="license" to support the Rel-license microformat
+      # http://microformats.org/wiki/rel-license
+      unless element["rel"] == "license"
+        element.remove_attribute("rel")
+      end
+    end
+  end
 end

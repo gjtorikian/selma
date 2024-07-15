@@ -25,6 +25,12 @@ def nest_html_content(html_content, depth)
   "#{"<span>" * depth}#{html_content}#{"</span>" * depth}"
 end
 
+FIXTURES_DIR = "test/fixtures"
+
+def load_fixture(file)
+  File.read(File.join(FIXTURES_DIR, file))
+end
+
 STRINGS = {
   basic: {
     html: '<b>Lo<!-- comment -->rem</b> <a href="pants" title="foo" style="text-decoration: underline;">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <style>.foo { color: #fff; }</style> <script>alert("hello world");</script>',
