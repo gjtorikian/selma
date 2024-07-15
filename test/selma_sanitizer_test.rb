@@ -40,6 +40,26 @@ module Selma
       assert_equal("<a href=\"https://google.com\">wow!</a>", result)
     end
 
+    def test_it_can_remove_attributes
+      hash = {
+        elements: ["a"],
+
+        attributes: {
+          "a" => ["href"],
+        },
+
+        protocols: {
+          "a" => { "href" => ["ftp", "http", "https", "mailto", :relative] },
+        },
+      }
+
+      sanitizer = Selma::Sanitizer.new(hash)
+      html = "<a href='https://google.com' class='very'>wow!</a>"
+      result = Selma::Rewriter.new(sanitizer: sanitizer).rewrite(html)
+
+      assert_equal("<a href=\"https://google.com\">wow!</a>", result)
+    end
+
     def test_it_can_be_turned_off
       html = '<a href="https://google.com">wow!</a>'
       assert_raises(ArgumentError) do
