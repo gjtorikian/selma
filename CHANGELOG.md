@@ -1,3 +1,9 @@
+# [v0.4.0] - 15-07-2024
+## What's Changed
+* add testing for big strings by @gjtorikian in https://github.com/gjtorikian/selma/pull/58
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.3.0...v0.4.0
 # [v0.3.0] - 07-06-2024
 ## What's Changed
 * Bump enum-iterator from 1.4.1 to 1.5.0 by @dependabot in https://github.com/gjtorikian/selma/pull/41
