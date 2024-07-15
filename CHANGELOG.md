@@ -1,3 +1,9 @@
+# [v0.4.1] - 15-07-2024
+## What's Changed
+* Address regression issue between sanitization and rewriting text chunks by @gjtorikian in https://github.com/gjtorikian/selma/pull/61
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.0...v0.4.1
 # [v0.4.0] - 15-07-2024
 ## What's Changed
 * add testing for big strings by @gjtorikian in https://github.com/gjtorikian/selma/pull/58
