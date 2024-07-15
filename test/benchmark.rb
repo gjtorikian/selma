@@ -97,5 +97,8 @@ def compare_rewriting
   end
 end
 
+puts "Compare sanitize"
 compare_sanitize
+
+puts "Compare rewriting"
 compare_rewriting
