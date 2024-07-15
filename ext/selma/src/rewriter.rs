@@ -273,10 +273,8 @@ impl SelmaRewriter {
         let binding = self.0.borrow();
 
         let mut sanitizer_document_content_handlers: Vec<DocumentContentHandlers> = vec![];
-        let mut sanitizer_initial_element_content_handlers: Vec<(
-            Cow<Selector>,
-            ElementContentHandlers,
-        )> = vec![];
+        let mut sanitizer_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> =
+            vec![];
 
         match &binding.sanitizer {
             None => (),
@@ -293,7 +291,7 @@ impl SelmaRewriter {
                         Ok(())
                     }));
                 }
-                sanitizer_initial_element_content_handlers.push(element!("*", |el| {
+                sanitizer_element_content_handlers.push(element!("*", |el| {
                     sanitizer.try_remove_element(el);
                     if el.removed() {
                         return Ok(());
@@ -311,7 +309,7 @@ impl SelmaRewriter {
         match Self::perform_handler_rewrite(
             self,
             sanitizer_document_content_handlers,
-            sanitizer_initial_element_content_handlers,
+            sanitizer_element_content_handlers,
             handlers,
             html,
         ) {
@@ -367,7 +365,7 @@ impl SelmaRewriter {
     pub fn perform_handler_rewrite(
         &self,
         sanitizer_document_content_handlers: Vec<DocumentContentHandlers>,
-        sanitizer_initial_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
+        sanitizer_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
         handlers: &[Handler],
         html: String,
     ) -> Result<Vec<u8>, magnus::Error> {
@@ -453,14 +451,25 @@ impl SelmaRewriter {
             }));
         });
 
-        element_content_handlers.extend(sanitizer_initial_element_content_handlers);
-
-        Self::run_rewrite(
+        let rewritten_html = Self::run_rewrite(
             self,
             sanitizer_document_content_handlers,
             element_content_handlers,
             html.as_bytes(),
-        )
+        );
+
+        // sanitization must happen separately, because text chunks
+        // could potentially have rewritten the html. ideally we'd
+        // be able to sanitize around the `process_text_handlers` call
+        match rewritten_html {
+            Ok(rewritten_html) => Self::run_rewrite(
+                self,
+                vec![],
+                sanitizer_element_content_handlers,
+                rewritten_html.as_slice(),
+            ),
+            Err(err) => Err(err),
+        }
     }
 
     fn run_rewrite(

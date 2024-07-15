@@ -74,4 +74,40 @@ class SelmaRewriterTest < Minitest::Test
       rewriter.rewrite(html)
     end
   end
+
+  class ElementRewriter
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      content = text.to_s
+      return unless content.include?("@")
+
+      html = content.gsub(/@(\w+)/, "<a href=\"https://yetto.app/\\1\" class=\"user-mention\">@\\1</a>")
+
+      text.replace(html, as: :html)
+    end
+  end
+
+  def test_rewritten_text_chunk_is_still_sanitized
+    initial_html = "<p>Hey there, @gjtorikian is here.</p>"
+
+    sanitizer_config = Selma::Sanitizer.new({
+      elements: ["a", "p"],
+      attributes: {
+        "a" => ["href"],
+      },
+      protocols: {
+        "a" => { "href" => ["https"] },
+      },
+    })
+    rewriter = Selma::Rewriter.new(sanitizer: sanitizer_config, handlers: [ElementRewriter.new])
+    result = rewriter.rewrite(initial_html)
+
+    # `class` is sanitized out
+    assert_equal("<p>Hey there, <a href=\"https://yetto.app/gjtorikian\">@gjtorikian</a> is here.</p>", result)
+  end
 end
