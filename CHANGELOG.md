@@ -1,3 +1,9 @@
+# [v0.4.2] - 16-07-2024
+## What's Changed
+* Revert sanitization reordering (restore old behavior) by @gjtorikian in https://github.com/gjtorikian/selma/pull/63
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.1...v0.4.2
 # [v0.4.1] - 15-07-2024
 ## What's Changed
 * Address regression issue between sanitization and rewriting text chunks by @gjtorikian in https://github.com/gjtorikian/selma/pull/61
