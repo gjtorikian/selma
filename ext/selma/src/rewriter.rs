@@ -304,7 +304,7 @@ impl SelmaRewriter {
             }
         };
 
-        let handlers = &binding.handlers;
+        let handlers: &Vec<Handler> = &binding.handlers;
 
         match Self::perform_handler_rewrite(
             self,
@@ -371,6 +371,9 @@ impl SelmaRewriter {
     ) -> Result<Vec<u8>, magnus::Error> {
         // TODO: this should ideally be done ahead of time on `initialize`, not on every `#rewrite` call
         let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
+
+        // have sanitization happen first
+        element_content_handlers.extend(sanitizer_element_content_handlers);
 
         handlers.iter().for_each(|handler| {
             let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
@@ -451,25 +454,12 @@ impl SelmaRewriter {
             }));
         });
 
-        let rewritten_html = Self::run_rewrite(
+        Self::run_rewrite(
             self,
             sanitizer_document_content_handlers,
             element_content_handlers,
             html.as_bytes(),
-        );
-
-        // sanitization must happen separately, because text chunks
-        // could potentially have rewritten the html. ideally we'd
-        // be able to sanitize around the `process_text_handlers` call
-        match rewritten_html {
-            Ok(rewritten_html) => Self::run_rewrite(
-                self,
-                vec![],
-                sanitizer_element_content_handlers,
-                rewritten_html.as_slice(),
-            ),
-            Err(err) => Err(err),
-        }
+        )
     }
 
     fn run_rewrite(

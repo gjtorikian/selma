@@ -92,7 +92,7 @@ class SelmaRewriterTest < Minitest::Test
     end
   end
 
-  def test_rewritten_text_chunk_is_still_sanitized
+  def test_rewritten_text_chunk_is_not_sanitized
     initial_html = "<p>Hey there, @gjtorikian is here.</p>"
 
     sanitizer_config = Selma::Sanitizer.new({
@@ -107,7 +107,7 @@ class SelmaRewriterTest < Minitest::Test
     rewriter = Selma::Rewriter.new(sanitizer: sanitizer_config, handlers: [ElementRewriter.new])
     result = rewriter.rewrite(initial_html)
 
-    # `class` is sanitized out
-    assert_equal("<p>Hey there, <a href=\"https://yetto.app/gjtorikian\">@gjtorikian</a> is here.</p>", result)
+    # `class` is not sanitized out
+    assert_equal("<p>Hey there, <a href=\"https://yetto.app/gjtorikian\" class=\"user-mention\">@gjtorikian</a> is here.</p>", result)
   end
 end
