@@ -168,50 +168,59 @@ class SelmaMaliciousnessTest < Minitest::Test
     end
   end
 
-  class RemoveLinkClass
-    SELECTOR = Selma::Selector.new(match_element: %(a:not([class="anchor"])))
+  class ContentExtractor
+    SELECTOR = Selma::Selector.new(match_element: "*", match_text_within: "title")
+
+    attr_reader :title, :meta
+
+    def initialize
+      super
+      @title = ""
+      @meta = {}
+      @within_title = false
+    end
 
     def selector
       SELECTOR
     end
 
     def handle_element(element)
-      element.remove_attribute("class")
-    end
-  end
+      if element.tag_name == "pre" ||
+          element.tag_name == "code" ||
+          element.tag_name == "form" ||
+          element.tag_name == "style" ||
+          element.tag_name == "noscript" ||
+          element.tag_name == "script" ||
+          element.tag_name == "svg"
+        element.remove
+      elsif element.tag_name == "title"
+        @within_title = true
+        element.remove
+      elsif element.tag_name == "meta"
+        return if element.attributes["name"].nil?
 
-  class RemoveIdAttributes
-    SELECTOR = Selma::Selector.new(match_element: %(a[id], li[id]))
-
-    def selector
-      SELECTOR
-    end
-
-    def handle_element(element)
-      # footnote ids should not be removed
-      return if element.tag_name == "li"
-      return if element.tag_name == "a"
-
-      # links with generated header anchors should not be removed
-      return if element.tag_name == "a" && element["class"] == "anchor"
-
-      element.remove_attribute("id")
-    end
-  end
-
-  class BaseRemoveRel
-    SELECTOR = Selma::Selector.new(match_element: %(a))
-
-    def selector
-      SELECTOR
-    end
-
-    def handle_element(element)
-      # we allow rel="license" to support the Rel-license microformat
-      # http://microformats.org/wiki/rel-license
-      unless element["rel"] == "license"
-        element.remove_attribute("rel")
+        @meta[element.attributes["name"]] = element.attributes["content"]
+      else
+        element.remove_and_keep_content
       end
     end
+
+    def handle_text_chunk(text)
+      if @within_title
+        @within_title = false
+        @title = text.to_s
+      end
+    end
+  end
+
+  def test_rewriter_does_not_halt_on_malformed_html
+    html = load_fixture("docs.html")
+
+    sanitizer_config = Selma::Sanitizer::Config::RELAXED.dup.merge({
+      allow_doctype: false,
+    })
+    sanitizer = Selma::Sanitizer.new(sanitizer_config)
+
+    Selma::Rewriter.new(sanitizer: sanitizer, handlers: [ContentExtractor.new]).rewrite(html)
   end
 end
