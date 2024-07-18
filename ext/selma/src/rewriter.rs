@@ -442,13 +442,12 @@ impl SelmaRewriter {
 
                 let closure_element_stack = element_stack.clone();
 
-                el.end_tag_handlers()
-                    .unwrap()
-                    .push(Box::new(move |_end_tag| {
-                        let mut stack = closure_element_stack.as_ref().borrow_mut();
-                        stack.pop();
+                if let Some(end_tag_handlers) = el.end_tag_handlers() {
+                    end_tag_handlers.push(Box::new(move |_end_tag| {
+                        closure_element_stack.as_ref().borrow_mut().pop();
                         Ok(())
                     }));
+                }
 
                 Ok(())
             }));
