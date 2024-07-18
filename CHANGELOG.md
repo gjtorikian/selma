@@ -1,3 +1,9 @@
+# [v0.4.3] - 18-07-2024
+## What's Changed
+* Stop assuming  handlers are always defined by @gjtorikian in https://github.com/gjtorikian/selma/pull/65
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.2...v0.4.3
 # [v0.4.2] - 16-07-2024
 ## What's Changed
 * Revert sanitization reordering (restore old behavior) by @gjtorikian in https://github.com/gjtorikian/selma/pull/63
