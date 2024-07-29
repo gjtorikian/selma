@@ -515,6 +515,10 @@ impl SelmaRewriter {
                 }));
         }
 
+        if element.removed() {
+            return Ok(());
+        }
+
         let rb_element = SelmaHTMLElement::new(element, ancestors);
         let rb_result =
             rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
