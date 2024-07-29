@@ -223,4 +223,59 @@ class SelmaMaliciousnessTest < Minitest::Test
 
     Selma::Rewriter.new(sanitizer: sanitizer, handlers: [ContentExtractor.new]).rewrite(html)
   end
+
+  class TagRemover
+    SELECTOR = Selma::Selector.new(match_element: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    UNNECESSARY_TAGS = [
+      "pre",
+    ]
+
+    CONTENT_TO_KEEP = [
+      "html",
+      "body",
+    ]
+
+    def handle_element(element)
+      if UNNECESSARY_TAGS.include?(element.tag_name)
+        element.remove
+      elsif CONTENT_TO_KEEP.include?(element.tag_name)
+        element.remove_and_keep_content
+      end
+    end
+  end
+
+  class ContentBreaker
+    SELECTOR = Selma::Selector.new(match_element: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      if Selma::Sanitizer::Config::DEFAULT[:whitespace_elements].include?(element.tag_name) && !element.removed?
+        element.append("\n", as: :text)
+      end
+      element.remove_and_keep_content
+    end
+  end
+
+  def test_deleted_content_does_not_segfault
+    html = load_fixture("deleting_content.html")
+
+    sanitizer_config = Selma::Sanitizer::Config::RELAXED.dup.merge({
+      allow_comments: false,
+      allow_doctype: false,
+    })
+    sanitizer = Selma::Sanitizer.new(sanitizer_config)
+
+    selma = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [TagRemover.new, ContentBreaker.new])
+    10.times do
+      selma.rewrite(html)
+    end
+  end
 end
