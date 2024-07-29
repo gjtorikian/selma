@@ -296,6 +296,7 @@ impl SelmaRewriter {
                     if el.removed() {
                         return Ok(());
                     }
+                    // if it was removed, there are no attributes to sanitize
                     match sanitizer.sanitize_attributes(el) {
                         Ok(_) => Ok(()),
                         Err(err) => Err(err.to_string().into()),
