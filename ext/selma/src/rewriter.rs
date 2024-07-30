@@ -112,9 +112,7 @@ impl SelmaRewriter {
             Some(rb_handlers) => {
                 let mut handlers: Vec<Handler> = vec![];
 
-                for h in rb_handlers.each() {
-                    let rb_handler = h.unwrap();
-
+                for rb_handler in rb_handlers.into_iter() {
                     // prevents missing #selector from ruining things
                     if !rb_handler.respond_to("selector", true).unwrap() {
                         let classname = unsafe { rb_handler.classname() };

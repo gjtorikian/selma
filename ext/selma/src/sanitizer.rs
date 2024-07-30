@@ -200,8 +200,7 @@ impl SelmaSanitizer {
 
         let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers.borrow_mut();
 
-        for opt_allowed_protocol in allow_list.each() {
-            let allowed_protocol = opt_allowed_protocol.unwrap();
+        for allowed_protocol in allow_list.into_iter() {
             let protocol_list = protocol_sanitizers.get_mut(&attr_name);
             if allowed_protocol.is_kind_of(class::string()) {
                 match protocol_list {
