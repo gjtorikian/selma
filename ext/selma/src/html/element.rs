@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::Element;
 use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Value};
@@ -8,16 +10,14 @@ struct HTMLElement {
 }
 
 #[magnus::wrap(class = "Selma::HTML::Element")]
-pub struct SelmaHTMLElement(std::cell::RefCell<HTMLElement>);
+pub struct SelmaHTMLElement(RefCell<HTMLElement>);
 
 /// SAFETY: This is safe because we only access this data when the GVL is held.
 unsafe impl Send for SelmaHTMLElement {}
 
 impl SelmaHTMLElement {
-    pub fn new(element: &mut Element, ancestors: &[String]) -> Self {
-        let (ref_wrap, _anchor) = NativeRefWrap::wrap_mut(element);
-
-        Self(std::cell::RefCell::new(HTMLElement {
+    pub fn new(ref_wrap: NativeRefWrap<Element<'static, 'static>>, ancestors: &[String]) -> Self {
+        Self(RefCell::new(HTMLElement {
             element: ref_wrap,
             ancestors: ancestors.to_owned(),
         }))
@@ -26,13 +26,12 @@ impl SelmaHTMLElement {
     fn tag_name(&self) -> Result<String, Error> {
         let binding = self.0.borrow();
 
-        if let Ok(e) = binding.element.get() {
-            Ok(e.tag_name())
-        } else {
-            Err(Error::new(
+        match binding.element.get() {
+            Ok(e) => Ok(e.tag_name().to_string()),
+            Err(_) => Err(Error::new(
                 exception::runtime_error(),
                 "`tag_name` is not available",
-            ))
+            )),
         }
     }
 
@@ -229,24 +228,25 @@ impl SelmaHTMLElement {
         }
     }
 
-    fn remove_and_keep_content(&self) {
-        let mut binding = self.0.borrow_mut();
-
-        if let Ok(e) = binding.element.get_mut() {
-            e.remove_and_keep_content()
-        }
+    fn remove_and_keep_content(&self) -> Result<(), Error> {
+        self.0
+            .borrow_mut()
+            .element
+            .get_mut()
+            .unwrap()
+            .remove_and_keep_content();
+        Ok(())
     }
 
     fn is_removed(&self) -> Result<bool, Error> {
         let binding = self.0.borrow();
 
-        if let Ok(e) = binding.element.get() {
-            Ok(e.removed())
-        } else {
-            Err(Error::new(
+        match binding.element.get() {
+            Ok(e) => Ok(e.removed()),
+            Err(_) => Err(Error::new(
                 exception::runtime_error(),
                 "`is_removed` is not available",
-            ))
+            )),
         }
     }
 }
