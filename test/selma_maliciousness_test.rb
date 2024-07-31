@@ -49,11 +49,10 @@ class SelmaMaliciousnessTest < Minitest::Test
     end
   end
 
-  def test_that_it_does_hate_nil_sanitizer_and_handlers
-    skip("Busted in Magnus")
+  def test_that_it_does_hate_nil_sanitizer_and_blank_handlers
     frag = "<i>Wow!</i>"
     assert_raises(ArgumentError) do
-      Selma::Rewriter.new(sanitizer: nil, handlers: nil).rewrite(frag)
+      Selma::Rewriter.new(sanitizer: nil, handlers: []).rewrite(frag)
     end
   end
 
