@@ -273,7 +273,7 @@ class SelmaMaliciousnessTest < Minitest::Test
     sanitizer = Selma::Sanitizer.new(sanitizer_config)
 
     selma = Selma::Rewriter.new(sanitizer: sanitizer, handlers: [TagRemover.new, ContentBreaker.new])
-    10.times do
+    1000.times do
       selma.rewrite(html)
     end
   end
