@@ -1,3 +1,9 @@
+# [v0.4.5] - 31-07-2024
+## What's Changed
+* Fix potential for segmentation fault by @gjtorikian in https://github.com/gjtorikian/selma/pull/70
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.4...v0.4.5
 # [v0.4.4] - 29-07-2024
 ## What's Changed
 * Bump rb-sys from 0.9.98 to 0.9.99 by @dependabot in https://github.com/gjtorikian/selma/pull/67
