@@ -5,17 +5,19 @@ use lol_html::{
     Settings,
 };
 use magnus::{
-    exception, function, method,
+    exception, function, gc, method,
     r_hash::ForEach,
     scan_args,
     typed_data::Obj,
     value::{Opaque, ReprValue},
-    Integer, IntoValue, Module, Object, RArray, RHash, RModule, Ruby, Symbol, Value,
+    DataTypeFunctions, Integer, IntoValue, Module, Object, RArray, RHash, RModule, Ruby, Symbol,
+    TypedData, Value,
 };
 
 use std::{
     borrow::Cow,
     cell::{Ref, RefCell},
+    mem,
     ops::Deref,
     primitive::str,
     rc::Rc,
@@ -23,31 +25,15 @@ use std::{
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag, text_chunk::SelmaHTMLTextChunk},
+    native_ref_wrap::NativeRefWrap,
     sanitizer::SelmaSanitizer,
     selector::SelmaSelector,
     tags::Tag,
 };
 
-#[derive(Copy, Clone)]
-pub struct ObjectValue {
-    pub inner: Opaque<Value>,
-}
-
-impl IntoValue for ObjectValue {
-    fn into_value_with(self, _: &Ruby) -> Value {
-        Ruby::get().unwrap().get_inner(self.inner)
-    }
-}
-
-impl From<Value> for ObjectValue {
-    fn from(v: Value) -> Self {
-        Self { inner: v.into() }
-    }
-}
-
 #[derive(Clone)]
 pub struct Handler {
-    rb_handler: ObjectValue,
+    rb_handler: Opaque<Value>,
     rb_selector: Opaque<Obj<SelmaSelector>>,
     // total_element_handler_calls: usize,
     // total_elapsed_element_handlers: f64,
@@ -67,8 +53,17 @@ pub struct Rewriter {
     // total_elapsed: f64,
 }
 
-#[magnus::wrap(class = "Selma::Rewriter")]
+#[derive(TypedData)]
+#[magnus(class = "Selma::Rewriter", free_immediately, mark)]
 pub struct SelmaRewriter(std::cell::RefCell<Rewriter>);
+
+impl DataTypeFunctions for SelmaRewriter {
+    fn mark(&self, marker: &gc::Marker) {
+        self.0.borrow().handlers.iter().for_each(|handler| {
+            marker.mark(handler.rb_handler);
+        });
+    }
+}
 
 type RewriterValues = (
     Option<Option<Obj<SelmaSanitizer>>>,
@@ -112,9 +107,7 @@ impl SelmaRewriter {
             Some(rb_handlers) => {
                 let mut handlers: Vec<Handler> = vec![];
 
-                for h in rb_handlers.each() {
-                    let rb_handler = h.unwrap();
-
+                for rb_handler in rb_handlers.into_iter() {
                     // prevents missing #selector from ruining things
                     if !rb_handler.respond_to("selector", true).unwrap() {
                         let classname = unsafe { rb_handler.classname() };
@@ -137,7 +130,7 @@ impl SelmaRewriter {
                         Ok(rb_selector) => rb_selector,
                     };
                     let handler = Handler {
-                        rb_handler: ObjectValue::from(rb_handler),
+                        rb_handler: Opaque::from(rb_handler),
                         rb_selector: Opaque::from(rb_selector),
                         // total_element_handler_calls: 0,
                         // total_elapsed_element_handlers: 0.0,
@@ -296,6 +289,7 @@ impl SelmaRewriter {
                     if el.removed() {
                         return Ok(());
                     }
+                    // if it was removed, there are no attributes to sanitize
                     match sanitizer.sanitize_attributes(el) {
                         Ok(_) => Ok(()),
                         Err(err) => Err(err.to_string().into()),
@@ -390,7 +384,7 @@ impl SelmaRewriter {
                     selector.match_element().unwrap(),
                     move |el| {
                         match Self::process_element_handlers(
-                            handler.rb_handler,
+                            handler,
                             el,
                             &closure_element_stack.borrow(),
                         ) {
@@ -421,7 +415,7 @@ impl SelmaRewriter {
                             }
                         }
 
-                        match Self::process_text_handlers(handler.rb_handler, text) {
+                        match Self::process_text_handlers(handler, text) {
                             Ok(_) => Ok(()),
                             Err(err) => Err(err.to_string().into()),
                         }
@@ -493,11 +487,11 @@ impl SelmaRewriter {
     }
 
     fn process_element_handlers(
-        obj_rb_handler: ObjectValue,
+        handler: &Handler,
         element: &mut Element,
         ancestors: &[String],
     ) -> Result<(), magnus::Error> {
-        let rb_handler = Ruby::get().unwrap().get_inner(obj_rb_handler.inner);
+        let rb_handler = handler.rb_handler.into_value();
 
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
@@ -506,33 +500,42 @@ impl SelmaRewriter {
                 .end_tag_handlers()
                 .unwrap()
                 .push(Box::new(move |end_tag| {
-                    let rb_end_tag = SelmaHTMLEndTag::new(end_tag);
+                    let (ref_wrap, anchor) = NativeRefWrap::wrap(end_tag);
 
-                    match rb_handler.funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,)) {
+                    let rb_end_tag = SelmaHTMLEndTag::new(ref_wrap);
+
+                    let result =
+                        rb_handler.funcall::<_, _, Value>(Self::SELMA_ON_END_TAG, (rb_end_tag,));
+
+                    mem::drop(anchor);
+
+                    match result {
                         Ok(_) => Ok(()),
                         Err(err) => Err(err.to_string().into()),
                     }
                 }));
         }
 
-        if element.removed() {
-            return Ok(());
-        }
+        let (ref_wrap, anchor) = NativeRefWrap::wrap(element);
+        let rb_element = SelmaHTMLElement::new(ref_wrap, ancestors);
+        let result = rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
 
-        let rb_element = SelmaHTMLElement::new(element, ancestors);
-        let rb_result =
-            rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_ELEMENT, (rb_element,));
-        match rb_result {
+        mem::drop(anchor);
+
+        match result {
             Ok(_) => Ok(()),
-            Err(err) => Err(err),
+            Err(err) => Err(magnus::Error::new(
+                exception::runtime_error(),
+                format!("{err:?}"),
+            )),
         }
     }
 
     fn process_text_handlers(
-        obj_rb_handler: ObjectValue,
+        handler: &Handler,
         text_chunk: &mut TextChunk,
     ) -> Result<(), magnus::Error> {
-        let rb_handler = Ruby::get().unwrap().get_inner(obj_rb_handler.inner);
+        let rb_handler = handler.rb_handler.into_value();
 
         // prevents missing `handle_text_chunk` function
         let content = text_chunk.as_str();
@@ -542,8 +545,15 @@ impl SelmaRewriter {
             return Ok(());
         }
 
-        let rb_text_chunk = SelmaHTMLTextChunk::new(text_chunk);
-        match rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_TEXT_CHUNK, (rb_text_chunk,)) {
+        let (ref_wrap, anchor) = NativeRefWrap::wrap(text_chunk);
+
+        let rb_text_chunk = SelmaHTMLTextChunk::new(ref_wrap);
+        let result =
+            rb_handler.funcall::<_, _, Value>(Self::SELMA_HANDLE_TEXT_CHUNK, (rb_text_chunk,));
+
+        mem::drop(anchor);
+
+        match result {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
                 exception::runtime_error(),

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::EndTag;
 use magnus::{method, Error, Module, RClass};
@@ -7,16 +9,14 @@ struct HTMLEndTag {
 }
 
 #[magnus::wrap(class = "Selma::HTML::EndTag")]
-pub struct SelmaHTMLEndTag(std::cell::RefCell<HTMLEndTag>);
+pub struct SelmaHTMLEndTag(RefCell<HTMLEndTag>);
 
 /// SAFETY: This is safe because we only access this data when the GVL is held.
 unsafe impl Send for SelmaHTMLEndTag {}
 
 impl SelmaHTMLEndTag {
-    pub fn new(end_tag: &mut EndTag) -> Self {
-        let (ref_wrap, _anchor) = NativeRefWrap::wrap(end_tag);
-
-        Self(std::cell::RefCell::new(HTMLEndTag { end_tag: ref_wrap }))
+    pub fn new(ref_wrap: NativeRefWrap<EndTag<'static>>) -> Self {
+        Self(RefCell::new(HTMLEndTag { end_tag: ref_wrap }))
     }
 
     fn tag_name(&self) -> String {

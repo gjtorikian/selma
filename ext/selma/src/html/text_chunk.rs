@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::{TextChunk, TextType};
 use magnus::{exception, method, Error, Module, RClass, Symbol, Value};
@@ -7,16 +9,14 @@ struct HTMLTextChunk {
 }
 
 #[magnus::wrap(class = "Selma::HTML::TextChunk")]
-pub struct SelmaHTMLTextChunk(std::cell::RefCell<HTMLTextChunk>);
+pub struct SelmaHTMLTextChunk(RefCell<HTMLTextChunk>);
 
 /// SAFETY: This is safe because we only access this data when the GVL is held.
 unsafe impl Send for SelmaHTMLTextChunk {}
 
 impl SelmaHTMLTextChunk {
-    pub fn new(text_chunk: &mut TextChunk) -> Self {
-        let (ref_wrap, _anchor) = NativeRefWrap::wrap_mut(text_chunk);
-
-        Self(std::cell::RefCell::new(HTMLTextChunk {
+    pub fn new(ref_wrap: NativeRefWrap<TextChunk<'static>>) -> Self {
+        Self(RefCell::new(HTMLTextChunk {
             text_chunk: ref_wrap,
         }))
     }
@@ -51,6 +51,18 @@ impl SelmaHTMLTextChunk {
                 exception::runtime_error(),
                 "`text_type` is not available",
             ))
+        }
+    }
+
+    fn is_removed(&self) -> Result<bool, Error> {
+        let binding = self.0.borrow();
+
+        match binding.text_chunk.get() {
+            Ok(tc) => Ok(tc.removed()),
+            Err(_) => Err(Error::new(
+                exception::runtime_error(),
+                "`is_removed` is not available",
+            )),
         }
     }
 
@@ -108,6 +120,7 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
     c_text_chunk.define_method("before", method!(SelmaHTMLTextChunk::before, -1))?;
     c_text_chunk.define_method("after", method!(SelmaHTMLTextChunk::after, -1))?;
     c_text_chunk.define_method("replace", method!(SelmaHTMLTextChunk::replace, -1))?;
+    c_text_chunk.define_method("removed?", method!(SelmaHTMLTextChunk::is_removed, 0))?;
 
     Ok(())
 }
