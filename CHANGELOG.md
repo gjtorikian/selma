@@ -1,3 +1,5 @@
+# [v0.4.6.1] - 04-08-2024
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.6...v0.4.6.1
 # [v0.4.6] - 04-08-2024
 ## What's Changed
 * Expose text chunk results by @gjtorikian in https://github.com/gjtorikian/selma/pull/72
