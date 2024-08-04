@@ -66,7 +66,7 @@ impl SelmaHTMLTextChunk {
         }
     }
 
-    fn before(&self, args: &[Value]) -> Result<(), Error> {
+    fn before(&self, args: &[Value]) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
         let text_chunk = binding.text_chunk.get_mut().unwrap();
 
@@ -77,10 +77,10 @@ impl SelmaHTMLTextChunk {
 
         text_chunk.before(&text_str, content_type);
 
-        Ok(())
+        Ok(text_chunk.as_str().to_string())
     }
 
-    fn after(&self, args: &[Value]) -> Result<(), Error> {
+    fn after(&self, args: &[Value]) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
         let text_chunk = binding.text_chunk.get_mut().unwrap();
 
@@ -91,10 +91,10 @@ impl SelmaHTMLTextChunk {
 
         text_chunk.after(&text_str, content_type);
 
-        Ok(())
+        Ok(text_chunk.as_str().to_string())
     }
 
-    fn replace(&self, args: &[Value]) -> Result<(), Error> {
+    fn replace(&self, args: &[Value]) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
         let text_chunk = binding.text_chunk.get_mut().unwrap();
 
@@ -105,7 +105,7 @@ impl SelmaHTMLTextChunk {
 
         text_chunk.replace(&text_str, content_type);
 
-        Ok(())
+        Ok(text_chunk.as_str().to_string())
     }
 }
 
