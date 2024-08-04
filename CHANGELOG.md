@@ -1,3 +1,9 @@
+# [v0.4.6] - 04-08-2024
+## What's Changed
+* Expose text chunk results by @gjtorikian in https://github.com/gjtorikian/selma/pull/72
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.5...v0.4.6
 # [v0.4.5] - 31-07-2024
 ## What's Changed
 * Fix potential for segmentation fault by @gjtorikian in https://github.com/gjtorikian/selma/pull/70
