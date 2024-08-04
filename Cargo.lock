@@ -426,12 +426,11 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2288c0e17cc8d342c712bb43a257a80ebffce59cdb33d5000d8348f3ec02528b"
+checksum = "77957b295656769bb8ad2b6a6b09d897d94f05c41b069aede1fcdaa675eaea04"
 dependencies = [
  "zerocopy",
- "zerocopy-derive",
 ]
 
 [[package]]
@@ -517,18 +516,18 @@ dependencies = [
 
 [[package]]
 name = "rb-sys"
-version = "0.9.99"
+version = "0.9.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d83151cfea2b67db2444f68c53b119ff77cff235ad711c765072e4daf8f3185b"
+checksum = "87f2ba20be84b32fad6b0ce397764bcdd0f2dca4431cf7035f6a6721e5747565"
 dependencies = [
  "rb-sys-build",
 ]
 
 [[package]]
 name = "rb-sys-build"
-version = "0.9.99"
+version = "0.9.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d038214c118ad4a75db555ccb78672e17e1c5c10f344456cd129008dbaa7de"
+checksum = "7ecae2bdcb118ee721d9a3929f89e8578237fade298dfcf8c928609aa88abc48"
 dependencies = [
  "bindgen",
  "lazy_static",
@@ -547,9 +546,9 @@ checksum = "a35802679f07360454b418a5d1735c89716bde01d35b1560fc953c1415a0b3bb"
 
 [[package]]
 name = "regex"
-version = "1.10.5"
+version = "1.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
+checksum = "4219d74c6b67a3654a9fbebc4b419e22126d13d2f3c4a07ee0cb61ff79a79619"
 dependencies = [
  "aho-corasick",
  "memchr",
