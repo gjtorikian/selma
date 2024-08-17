@@ -1,3 +1,10 @@
+# [v0.4.7] - 17-08-2024
+## What's Changed
+* Bump rb-sys from 0.9.100 to 0.9.101 by @dependabot in https://github.com/gjtorikian/selma/pull/75
+* Support stacking text chunk changes by @gjtorikian in https://github.com/gjtorikian/selma/pull/76
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.6.1...v0.4.7
 # [v0.4.6.1] - 04-08-2024
 **Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.6...v0.4.6.1
 # [v0.4.6] - 04-08-2024
