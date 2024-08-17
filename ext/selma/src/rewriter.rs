@@ -540,7 +540,8 @@ impl SelmaRewriter {
         // prevents missing `handle_text_chunk` function
         let content = text_chunk.as_str();
 
-        // seems that sometimes lol-html returns blank text / EOLs?
+        // lol-html sometimes returns blank text if
+        // last_in_text_node() is true
         if content.is_empty() {
             return Ok(());
         }
