@@ -276,5 +276,5 @@ class SelmaMaliciousnessTest < Minitest::Test
     1000.times do
       selma.rewrite(html)
     end
-  end
+  end if ci?
 end

@@ -25,6 +25,10 @@ def nest_html_content(html_content, depth)
   "#{"<span>" * depth}#{html_content}#{"</span>" * depth}"
 end
 
+def ci?
+  ENV["CI"] == "true"
+end
+
 FIXTURES_DIR = "test/fixtures"
 
 def load_fixture(file)

@@ -144,6 +144,68 @@ class SelmaRewriterTextTest < Minitest::Test
     assert_equal("<div><p>Hello @gjtorikian: <code>@gjtorik</code></p><br/> <pre>@gjtorik</pre></div>", modified_doc)
   end
 
+  class TextRewriteOne
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.replace(text.to_s.tr("1", "2"), as: :text)
+    end
+  end
+
+  class TextRewriteTwo
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.replace(text.to_s.tr("2", "3"), as: :text)
+    end
+  end
+
+  def test_that_it_stacks_two_text_changes
+    frag = "<div>1 + 2 = 6</div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [TextRewriteOne.new, TextRewriteTwo.new]).rewrite(frag)
+
+    assert_equal("<div>3 + 3 = 6</div>", modified_doc)
+  end
+
+  class HTMLRewriteOne
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("1", "<strong>1</strong>"), as: :html)
+    end
+  end
+
+  class HTMLRewriteTwo
+    SELECTOR = Selma::Selector.new(match_text_within: "*")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("2", "<em>2</em>"), as: :html)
+    end
+  end
+
+  def test_that_it_stacks_two_html_changes
+    frag = "<div>1 + 2 = 3</div>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [HTMLRewriteOne.new, HTMLRewriteTwo.new]).rewrite(frag)
+
+    assert_equal("<div><strong>1</strong> + <em>2</em> = 3</div>", modified_doc)
+  end
+
   class TextStringResizeHandler
     DEFAULT_IGNORED_ANCESTOR_TAGS = ["pre", "code", "tt"].freeze
 
