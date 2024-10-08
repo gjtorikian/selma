@@ -110,4 +110,24 @@ class SelmaRewriterTest < Minitest::Test
     # `class` is not sanitized out
     assert_equal("<p>Hey there, <a href=\"https://yetto.app/gjtorikian\" class=\"user-mention\">@gjtorikian</a> is here.</p>", result)
   end
+
+  def test_stress_garbage_collection
+    initial_html = File.read(File.join(__dir__, "benchmark", "html", "document-sm.html")).encode("UTF-8", invalid: :replace, undef: :replace)
+
+    sanitizer_config = Selma::Sanitizer.new({
+      elements: ["a", "p"],
+      attributes: {
+        "a" => ["href"],
+      },
+      protocols: {
+        "a" => { "href" => ["https"] },
+      },
+    })
+
+    GC.stress = true
+    # If this segfaults, then it failed the test
+    rewriter = Selma::Rewriter.new(sanitizer: sanitizer_config, handlers: [ElementRewriter.new])
+    rewriter.rewrite(initial_html)
+    GC.stress = false
+  end
 end

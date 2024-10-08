@@ -155,15 +155,12 @@ class SelmaMaliciousnessTest < Minitest::Test
   end
 
   def test_sanitizer_expects_all_as_symbol
-    html = "<a href='https://google.com'>wow!</a>"
-    sanitizer = Selma::Sanitizer.new({
-      elements: ["a"],
-      attributes: { "a" => ["href"] },
-      protocols: { "a" => { "href" => [:all] } },
-    })
-
     assert_raises(ArgumentError) do
-      Selma::Rewriter.new(sanitizer: sanitizer).rewrite(html)
+      Selma::Sanitizer.new({
+        elements: ["a"],
+        attributes: { "a" => ["href"] },
+        protocols: { "a" => { "href" => [:all] } },
+      })
     end
   end
 
