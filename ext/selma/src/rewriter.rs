@@ -87,19 +87,13 @@ impl SelmaRewriter {
 
         let sanitizer = match rb_sanitizer {
             None => {
-                // no `sanitizer:` provided, use default
+                // no `sanitizer:` kwarg provided, use default
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
                 let wrapped_sanitizer = Obj::wrap(default_sanitizer);
-                wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
+                // wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
                 Some(wrapped_sanitizer.deref().to_owned())
             }
-            Some(sanitizer_value) => match sanitizer_value {
-                None => None, // no `sanitizer:` provided, use default
-                Some(sanitizer) => {
-                    sanitizer.funcall::<&str, (), Value>("setup", ())?;
-                    Some(sanitizer.deref().to_owned())
-                }
-            },
+            Some(sanitizer_value) => sanitizer_value.map(|sanitizer| sanitizer.deref().to_owned()),
         };
 
         let handlers = match rb_handlers {

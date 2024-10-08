@@ -17,7 +17,7 @@ module Selma
       }
       sanitizer = Selma::Sanitizer.new(hash)
 
-      assert_equal(["a"], sanitizer.elements)
+      assert_equal(["a"], sanitizer.config[:elements])
     end
 
     def test_it_can_keep_attributes

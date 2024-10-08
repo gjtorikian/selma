@@ -28,7 +28,7 @@ module Selma
           raise ArgumentError, "other_config must be a Hash" unless other_config.is_a?(Hash)
 
           merged = {}
-          keys   = Set.new(config.keys + other_config.keys)
+          keys   = Set.new(config.keys + other_config.keys).to_a
 
           keys.each do |key|
             oldval = config[key]
@@ -39,7 +39,7 @@ module Selma
               merged[key] = if oldval.is_a?(Hash) && newval.is_a?(Hash)
                 oldval.empty? ? newval.dup : merge(oldval, newval)
               elsif newval.is_a?(Array) && key != :transformers
-                Set.new(newval)
+                Set.new(newval).to_a
               else
                 can_dupe?(newval) ? newval.dup : newval
               end

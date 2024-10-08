@@ -279,20 +279,19 @@ module Selma
           )
         end
 
-        def test_remove_the_contents_of_specified_nodes_when_remove_contents_is_an_array_or_set_of_element_names_as_strings
+        def test_remove_the_contents_of_specified_nodes_when_remove_contents_is_an_array_of_element_names_as_strings
           sanitizer = Selma::Sanitizer.new({ remove_contents: ["script", "span"] })
 
           assert_equal(
             "foo bar baz hi",
             Selma::Rewriter.new(sanitizer: sanitizer).rewrite('foo bar <div>baz<span>quux</span> <b>hi</b><script>alert("hello!");</script></div>'),
           )
+        end
 
-          sanitizer = Selma::Sanitizer.new({ remove_contents: Set.new(["script", "span"]) })
-
-          assert_equal(
-            "foo bar baz hi",
-            Selma::Rewriter.new(sanitizer: sanitizer).rewrite('foo bar <div>baz<span>quux</span> <b>hi</b><script>alert("hello!");</script></div>'),
-          )
+        def test_raises_when_remove_contents_is_a_set_of_element_names_as_strings
+          assert_raises(ArgumentError) do
+            Selma::Sanitizer.new({ remove_contents: Set.new(["script", "span"]) })
+          end
         end
 
         def test_should_remove_the_contents_of_allowlisted_iframes

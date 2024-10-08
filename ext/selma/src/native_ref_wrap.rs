@@ -26,7 +26,7 @@ impl Drop for Anchor<'_> {
     }
 }
 
-// NOTE: So far as I understand it, there's no great wya to work between lol_html's lifetimes and FFI.
+// NOTE: So far as I understand it, there's no great way to work between lol_html's lifetimes and FFI.
 // To work around that, we create a wrapper that erases all the lifetime information from the inner reference
 // and provides an anchor object that keeps track of the lifetime in the runtime.
 //
