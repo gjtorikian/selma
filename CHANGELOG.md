@@ -1,3 +1,12 @@
+# [v0.4.8] - 08-10-2024
+## What's Changed
+* Bump rb-sys from 0.9.101 to 0.9.102 by @dependabot in https://github.com/gjtorikian/selma/pull/78
+* Add a spec for stress testing garbage collection by @jordandcarter in https://github.com/gjtorikian/selma/pull/80
+
+## New Contributors
+* @jordandcarter made their first contribution in https://github.com/gjtorikian/selma/pull/80
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.7...v0.4.8
 # [v0.4.7] - 17-08-2024
 ## What's Changed
 * Bump rb-sys from 0.9.100 to 0.9.101 by @dependabot in https://github.com/gjtorikian/selma/pull/75
