@@ -8,6 +8,7 @@ use magnus::{
     class, eval, exception, function, method,
     r_hash::ForEach,
     scan_args,
+    typed_data::Hash,
     value::{Opaque, ReprValue},
     Module, Object, RArray, RHash, RModule, RString, Ruby, Symbol, Value,
 };
@@ -47,35 +48,164 @@ impl SelmaSanitizer {
         let args = scan_args::scan_args::<(), (Option<RHash>,), (), (), (), ()>(arguments)?;
         let (opt_config,): (Option<RHash>,) = args.optional;
 
+        let ruby = Ruby::get().unwrap();
+
         let config = match opt_config {
             Some(config) => config,
             // TODO: this seems like a hack to fix?
             None => magnus::eval::<RHash>(r#"Selma::Sanitizer::Config::DEFAULT"#).unwrap(),
         };
 
+        let mut flags = [0; crate::tags::Tag::TAG_COUNT];
+        let mut sanitizer_allowed_attrs = vec![];
+        let sanitizer_allowed_classes = vec![];
+        match Self::setup_config(&mut flags, config) {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
         let mut element_sanitizers = HashMap::new();
+
         crate::tags::Tag::html_tags().iter().for_each(|html_tag| {
-            let es = ElementSanitizer::default();
-            element_sanitizers.insert(
-                crate::tags::Tag::element_name_from_enum(html_tag).to_string(),
-                es,
-            );
+            let mut es_allowed_attrs = vec![];
+            let element_name = crate::tags::Tag::element_name_from_enum(html_tag).to_string();
+
+            let mut protocol_sanitizers = HashMap::new();
+            // def allow_protocol(element, attr, protos)
+            //  if protos.is_a?(Array)
+            //    raise ArgumentError, "`:all` must be passed outside of an array" if protos.include?(:all)
+            //  else
+            //    protos = [protos]
+            //  end
+            //  set_allowed_protocols(element, attr, protos)
+            // end
+            match config.get(ruby.to_symbol("protocols")) {
+                Some(value) => match RHash::from_value(value) {
+                    None => {}
+                    Some(allowed_protocols) => {
+                        allowed_protocols.foreach(|element_name: String, protocols: RHash| {
+                            protocols.foreach(|attribute_name: String, protocol_list: Value| {
+                                let protocols: RArray;
+                                if protocol_list.is_kind_of(class::array()) {
+                                    protocols = RArray::from_value(protocol_list).unwrap();
+                                    if protocols.includes(ruby.to_symbol("all")) {
+                                        return Err(magnus::Error::new(
+                                            exception::arg_error(),
+                                            "`:all` must be passed outside of an array".to_string(),
+                                        ));
+                                    }
+                                } else if protocol_list.is_kind_of(class::symbol())
+                                    && Symbol::from_value(protocol_list) == eval(":all").unwrap()
+                                {
+                                    protocols = RArray::new();
+                                    protocols.push(ruby.to_symbol("all"));
+                                } else {
+                                    return Err(magnus::Error::new(
+                                        exception::arg_error(),
+                                        "Protocol list must be an array, or just `:all`"
+                                            .to_string(),
+                                    ));
+                                }
+                                Self::set_allowed_protocols(
+                                    element_name.clone(),
+                                    attribute_name,
+                                    &mut protocol_sanitizers,
+                                    protocols,
+                                );
+                                Ok(ForEach::Continue)
+                            });
+
+                            Ok(ForEach::Continue)
+                        });
+                    }
+                },
+                None => {}
+            };
+
+            let element_sanitizer = ElementSanitizer {
+                allowed_attrs: es_allowed_attrs,
+                required_attrs: vec![],
+                allowed_classes: vec![],
+                protocol_sanitizers,
+            };
+            element_sanitizers.insert(element_name, element_sanitizer);
         });
 
+        // def allow_attribute(element, attrs)
+        //   attrs.flatten.each { |attr| set_allowed_attribute(element, attr, true) }
+        // end
+        match config.get(ruby.to_symbol("attributes")) {
+            Some(value) => match RHash::from_value(value) {
+                None => {}
+                Some(allowed_attributes) => {
+                    allowed_attributes.foreach(|element_value: Value, attributes: RArray| {
+                        attributes.into_iter().for_each(|attr: Value| {
+                            match RString::from_value(attr) {
+                                None => {}
+                                Some(attribute_name) => {
+                                    let attr_name = attribute_name.to_string().unwrap();
+                                    let element = match element_value.to_r_string() {
+                                        Err(_) => "".to_string(),
+                                        Ok(element_name) => element_name.to_string().unwrap(),
+                                    };
+                                    if element == "all" {
+                                        Self::set_allowed(
+                                            &mut sanitizer_allowed_attrs,
+                                            &attr_name,
+                                            true,
+                                        );
+                                    } else {
+                                        let element_sanitizer = Self::get_element_sanitizer(
+                                            &mut element_sanitizers,
+                                            &element,
+                                        );
+                                        element_sanitizer.allowed_attrs.push(attr_name);
+                                    }
+                                }
+                            }
+                        });
+
+                        Ok(ForEach::Continue)
+                    });
+                }
+            },
+            None => {}
+        };
+
+        let escape_tagfilter = match config.get(ruby.to_symbol("escape_tagfilter")) {
+            Some(value) => value.to_bool(),
+            None => true,
+        };
+
+        let allow_comments = match config.get(ruby.to_symbol("allow_comments")) {
+            Some(value) => value.to_bool(),
+            None => false,
+        };
+
+        let allow_doctype = match config.get(ruby.to_symbol("allow_doctype")) {
+            Some(value) => value.to_bool(),
+            None => true,
+        };
+
         Ok(Self(std::cell::RefCell::new(Sanitizer {
-            flags: [0; crate::tags::Tag::TAG_COUNT],
-            allowed_attrs: vec![],
-            allowed_classes: vec![],
+            flags,
+            allowed_attrs: sanitizer_allowed_attrs,
+            allowed_classes: sanitizer_allowed_classes,
             element_sanitizers,
 
-            escape_tagfilter: true,
-            allow_comments: false,
-            allow_doctype: true,
+            escape_tagfilter,
+            allow_comments,
+            allow_doctype,
             config: config.into(),
         })))
     }
 
-    pub fn setup_config(&self, config: RHash) -> Result<(), magnus::Error> {
+    fn setup_config(
+        flags: &mut [u8; crate::tags::Tag::TAG_COUNT],
+        config: RHash,
+    ) -> Result<(), magnus::Error> {
         let ruby = Ruby::get().unwrap();
 
         // def allow_element(elements)
@@ -91,92 +221,13 @@ impl SelmaSanitizer {
                             None => {}
                             Some(element_name) => {
                                 Self::set_flag(
-                                    self,
                                     element_name.to_string().unwrap(),
+                                    flags,
                                     Self::SELMA_SANITIZER_ALLOW,
                                     true,
                                 );
                             }
                         });
-                }
-            },
-            None => {}
-        };
-
-        // def allow_attribute(element, attrs)
-        //   attrs.flatten.each { |attr| set_allowed_attribute(element, attr, true) }
-        // end
-        match config.get(ruby.to_symbol("attributes")) {
-            Some(value) => match RHash::from_value(value) {
-                None => {}
-                Some(allowed_attributes) => {
-                    allowed_attributes.foreach(|element_name: String, attributes: RArray| {
-                        attributes.into_iter().for_each(|attr: Value| {
-                            match RString::from_value(attr) {
-                                None => {}
-                                Some(attribute_name) => {
-                                    Self::set_allowed_attribute(
-                                        self,
-                                        element_name.clone(),
-                                        attribute_name.to_string().unwrap(),
-                                        true,
-                                    );
-                                }
-                            }
-                        });
-
-                        Ok(ForEach::Continue)
-                    });
-                }
-            },
-            None => {}
-        };
-
-        // def allow_protocol(element, attr, protos)
-        //  if protos.is_a?(Array)
-        //    raise ArgumentError, "`:all` must be passed outside of an array" if protos.include?(:all)
-        //  else
-        //    protos = [protos]
-        //  end
-        //  set_allowed_protocols(element, attr, protos)
-        // end
-        match config.get(ruby.to_symbol("protocols")) {
-            Some(value) => match RHash::from_value(value) {
-                None => {}
-                Some(allowed_protocols) => {
-                    allowed_protocols.foreach(|element_name: String, protocols: RHash| {
-                        protocols.foreach(|attribute_name: String, protocol_list: Value| {
-                            let protocols: RArray;
-                            if protocol_list.is_kind_of(class::array()) {
-                                protocols = RArray::from_value(protocol_list).unwrap();
-                                if protocols.includes(ruby.to_symbol("all")) {
-                                    return Err(magnus::Error::new(
-                                        exception::arg_error(),
-                                        "`:all` must be passed outside of an array".to_string(),
-                                    ));
-                                }
-                            } else if protocol_list.is_kind_of(class::symbol())
-                                && Symbol::from_value(protocol_list) == eval(":all").unwrap()
-                            {
-                                protocols = RArray::new();
-                                protocols.push(ruby.to_symbol("all"));
-                            } else {
-                                return Err(magnus::Error::new(
-                                    exception::arg_error(),
-                                    "Protocol list must be an array, or just `:all`".to_string(),
-                                ));
-                            }
-                            Self::set_allowed_protocols(
-                                self,
-                                element_name.clone(),
-                                attribute_name,
-                                protocols,
-                            );
-                            Ok(ForEach::Continue)
-                        });
-
-                        Ok(ForEach::Continue)
-                    });
                 }
             },
             None => {}
@@ -195,7 +246,7 @@ impl SelmaSanitizer {
                     || remove_contents.is_kind_of(class::false_class())
                 {
                     Self::set_all_flags(
-                        self,
+                        flags,
                         Self::SELMA_SANITIZER_REMOVE_CONTENTS,
                         remove_contents.to_bool(),
                     );
@@ -207,8 +258,8 @@ impl SelmaSanitizer {
                             None => {}
                             Some(element_name) => {
                                 Self::set_flag(
-                                    self,
                                     element_name.to_string().unwrap(),
+                                    flags,
                                     Self::SELMA_SANITIZER_REMOVE_CONTENTS,
                                     true,
                                 );
@@ -228,7 +279,7 @@ impl SelmaSanitizer {
         // def wrap_with_whitespace(elements)
         //  elements.flatten.each { |e| set_flag(e, WRAP_WHITESPACE, true) }
         // end
-        match config.get(ruby.to_symbol("wrap_with_whitespace")) {
+        match config.get(ruby.to_symbol("whitespace_elements")) {
             Some(value) => match RArray::from_value(value) {
                 None => {}
                 Some(elements) => {
@@ -238,8 +289,8 @@ impl SelmaSanitizer {
                             None => {}
                             Some(element_name) => {
                                 Self::set_flag(
-                                    self,
                                     element_name.to_string().unwrap(),
+                                    flags,
                                     Self::SELMA_SANITIZER_WRAP_WHITESPACE,
                                     true,
                                 );
@@ -261,30 +312,35 @@ impl SelmaSanitizer {
     }
 
     /// Toggle a sanitizer option on or off.
-    fn set_flag(&self, tag_name: String, flag: u8, set: bool) {
+    fn set_flag(
+        tag_name: String,
+        flags: &mut [u8; crate::tags::Tag::TAG_COUNT],
+        flag: u8,
+        set: bool,
+    ) {
         let tag = crate::tags::Tag::tag_from_tag_name(tag_name.as_str());
         if set {
-            self.0.borrow_mut().flags[tag.index] |= flag;
+            flags[tag.index] |= flag;
         } else {
-            self.0.borrow_mut().flags[tag.index] &= !flag;
+            flags[tag.index] &= !flag;
         }
     }
 
     /// Toggles all sanitization options on or off.
-    fn set_all_flags(&self, flag: u8, set: bool) {
+    fn set_all_flags(flags: &mut [u8; crate::tags::Tag::TAG_COUNT], flag: u8, set: bool) {
         if set {
             crate::tags::Tag::html_tags()
                 .iter()
                 .enumerate()
                 .for_each(|(iter, _)| {
-                    self.0.borrow_mut().flags[iter] |= flag;
+                    flags[iter] |= flag;
                 });
         } else {
             crate::tags::Tag::html_tags()
                 .iter()
                 .enumerate()
                 .for_each(|(iter, _)| {
-                    self.0.borrow_mut().flags[iter] &= flag;
+                    flags[iter] &= flag;
                 });
         }
     }
@@ -340,45 +396,12 @@ impl SelmaSanitizer {
         d.remove();
     }
 
-    fn set_allowed_attribute(&self, element_name: String, attr_name: String, allow: bool) -> bool {
-        let mut binding = self.0.borrow_mut();
-
-        if element_name == "all" {
-            let allowed_attrs = &mut binding.allowed_attrs;
-            Self::set_allowed(allowed_attrs, &attr_name, allow);
-        } else {
-            let element_sanitizers = &mut binding.element_sanitizers;
-            let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
-
-            element_sanitizer.allowed_attrs.push(attr_name);
-        }
-
-        allow
-    }
-
-    fn set_allowed_class(&self, element_name: String, class_name: String, allow: bool) -> bool {
-        let mut binding = self.0.borrow_mut();
-        if element_name == "all" {
-            let allowed_classes = &mut binding.allowed_classes;
-            Self::set_allowed(allowed_classes, &class_name, allow);
-        } else {
-            let element_sanitizers = &mut binding.element_sanitizers;
-            let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
-
-            let allowed_classes = element_sanitizer.allowed_classes.borrow_mut();
-            Self::set_allowed(allowed_classes, &class_name, allow)
-        }
-        allow
-    }
-
-    fn set_allowed_protocols(&self, element_name: String, attr_name: String, allow_list: RArray) {
-        let mut binding = self.0.borrow_mut();
-
-        let element_sanitizers = &mut binding.element_sanitizers;
-        let element_sanitizer = Self::get_element_sanitizer(element_sanitizers, &element_name);
-
-        let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers.borrow_mut();
-
+    fn set_allowed_protocols(
+        element_name: String,
+        attr_name: String,
+        protocol_sanitizers: &mut HashMap<String, Vec<String>>,
+        allow_list: RArray,
+    ) {
         for allowed_protocol in allow_list.into_iter() {
             let protocol_list = protocol_sanitizers.get_mut(&attr_name);
             if allowed_protocol.is_kind_of(class::string()) {
@@ -694,6 +717,7 @@ impl SelmaSanitizer {
                     element.after(" ", ContentType::Text);
                 }
             }
+
             element.remove_and_keep_content();
         }
     }
@@ -738,51 +762,6 @@ pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;
     c_sanitizer.define_method("config", method!(SelmaSanitizer::get_config, 0))?;
-
-    c_sanitizer.define_method("set_flag", method!(SelmaSanitizer::set_flag, 3))?;
-    c_sanitizer.define_method("set_all_flags", method!(SelmaSanitizer::set_all_flags, 2))?;
-
-    c_sanitizer.define_method(
-        "set_escape_tagfilter",
-        method!(SelmaSanitizer::set_escape_tagfilter, 1),
-    )?;
-    c_sanitizer.define_method(
-        "escape_tagfilter",
-        method!(SelmaSanitizer::get_escape_tagfilter, 0),
-    )?;
-
-    c_sanitizer.define_method(
-        "set_allow_comments",
-        method!(SelmaSanitizer::set_allow_comments, 1),
-    )?;
-    c_sanitizer.define_method(
-        "allow_comments",
-        method!(SelmaSanitizer::get_allow_comments, 0),
-    )?;
-
-    c_sanitizer.define_method(
-        "set_allow_doctype",
-        method!(SelmaSanitizer::set_allow_doctype, 1),
-    )?;
-    c_sanitizer.define_method(
-        "allow_doctype",
-        method!(SelmaSanitizer::get_allow_doctype, 0),
-    )?;
-
-    c_sanitizer.define_method(
-        "set_allowed_attribute",
-        method!(SelmaSanitizer::set_allowed_attribute, 3),
-    )?;
-
-    c_sanitizer.define_method(
-        "set_allowed_class",
-        method!(SelmaSanitizer::set_allowed_class, 3),
-    )?;
-
-    c_sanitizer.define_method(
-        "set_allowed_protocols",
-        method!(SelmaSanitizer::set_allowed_protocols, 3),
-    )?;
 
     Ok(())
 }
