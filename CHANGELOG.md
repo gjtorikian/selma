@@ -1,3 +1,9 @@
+# [v0.4.9] - 09-10-2024
+## What's Changed
+* Bump lol_html from 1.2.1 to 2.0.0 by @dependabot in https://github.com/gjtorikian/selma/pull/79
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.8...v0.4.9
 # [v0.4.8] - 08-10-2024
 
 ## What's Changed
