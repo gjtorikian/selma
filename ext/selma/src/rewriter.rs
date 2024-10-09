@@ -350,11 +350,11 @@ impl SelmaRewriter {
         }
     }
 
-    pub fn perform_handler_rewrite(
+    pub fn perform_handler_rewrite<'a>(
         &self,
-        sanitizer_document_content_handlers: Vec<DocumentContentHandlers>,
-        sanitizer_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
-        handlers: &[Handler],
+        sanitizer_document_content_handlers: Vec<DocumentContentHandlers<'a>>,
+        sanitizer_element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers<'a>)>,
+        handlers: &'a [Handler],
         html: String,
     ) -> Result<Vec<u8>, magnus::Error> {
         // TODO: this should ideally be done ahead of time on `initialize`, not on every `#rewrite` call
@@ -431,10 +431,12 @@ impl SelmaRewriter {
                 let closure_element_stack = element_stack.clone();
 
                 if let Some(end_tag_handlers) = el.end_tag_handlers() {
-                    end_tag_handlers.push(Box::new(move |_end_tag| {
-                        closure_element_stack.as_ref().borrow_mut().pop();
-                        Ok(())
-                    }));
+                    end_tag_handlers.push(lol_html::EndTagHandler::into(Box::new(
+                        move |_end_tag| {
+                            closure_element_stack.as_ref().borrow_mut().pop();
+                            Ok(())
+                        },
+                    )));
                 }
 
                 Ok(())
@@ -449,10 +451,10 @@ impl SelmaRewriter {
         )
     }
 
-    fn run_rewrite(
+    fn run_rewrite<'a>(
         &self,
-        document_content_handlers: Vec<DocumentContentHandlers>,
-        element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)>,
+        document_content_handlers: Vec<DocumentContentHandlers<'a>>,
+        element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers<'a>)>,
         html: &[u8],
     ) -> Result<Vec<u8>, magnus::Error> {
         let binding = &self.0.borrow();
