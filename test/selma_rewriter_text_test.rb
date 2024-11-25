@@ -144,6 +144,25 @@ class SelmaRewriterTextTest < Minitest::Test
     assert_equal("<div><p>Hello @gjtorikian: <code>@gjtorik</code></p><br/> <pre>@gjtorik</pre></div>", modified_doc)
   end
 
+  class RejectIndirectAncestorText
+    SELECTOR = Selma::Selector.new(match_text_within: "*", ignore_text_within: ["code"])
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_text_chunk(text)
+      text.replace(text.to_s.sub("foo", "bar"), as: :html)
+    end
+  end
+
+  def test_that_text_reject_considers_ancestors
+    frag = "<p>foo</p><code>foo<span class=\"highlight\">foo</span></code>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [RejectIndirectAncestorText.new]).rewrite(frag)
+
+    assert_equal("<p>bar</p><code>foo<span class=\"highlight\">foo</span></code>", modified_doc)
+  end
+
   class TextRewriteOne
     SELECTOR = Selma::Selector.new(match_text_within: "*")
 
