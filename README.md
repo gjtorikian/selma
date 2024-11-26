@@ -134,7 +134,6 @@ The `Selma::Selector` object has three possible kwargs:
 Here's an example for `handle_text_chunk` which changes strings in various elements which are _not_ `pre` or `code`:
 
 ```ruby
-
 class MatchText
   SELECTOR = Selma::Selector.new(match_text_within: "*", ignore_text_within: ["pre", "code"])
 
@@ -189,6 +188,7 @@ Selma::Rewriter.new(options: { memory: { max_allowed_memory_usage: 1_000_000 } }
 ```
 
 The structure of the `memory` options looks like this:
+
 ```ruby
 {
   memory: {
@@ -215,43 +215,44 @@ input size = 25309 bytes, 0.03 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         sanitize-sm    15.000 i/100ms
-            selma-sm   127.000 i/100ms
+sanitize-sm 15.000 i/100ms
+selma-sm 127.000 i/100ms
 Calculating -------------------------------------
-         sanitize-sm    157.643 (± 1.9%) i/s -      4.740k in  30.077172s
-            selma-sm      1.278k (± 1.5%) i/s -     38.354k in  30.019722s
+sanitize-sm 157.643 (± 1.9%) i/s - 4.740k in 30.077172s
+selma-sm 1.278k (± 1.5%) i/s - 38.354k in 30.019722s
 
 Comparison:
-            selma-sm:     1277.9 i/s
-         sanitize-sm:      157.6 i/s - 8.11x  slower
+selma-sm: 1277.9 i/s
+sanitize-sm: 157.6 i/s - 8.11x slower
 
 input size = 86686 bytes, 0.09 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         sanitize-md     4.000 i/100ms
-            selma-md    33.000 i/100ms
+sanitize-md 4.000 i/100ms
+selma-md 33.000 i/100ms
 Calculating -------------------------------------
-         sanitize-md     40.034 (± 5.0%) i/s -      1.200k in  30.043322s
-            selma-md    332.959 (± 2.1%) i/s -      9.999k in  30.045733s
+sanitize-md 40.034 (± 5.0%) i/s - 1.200k in 30.043322s
+selma-md 332.959 (± 2.1%) i/s - 9.999k in 30.045733s
 
 Comparison:
-            selma-md:      333.0 i/s
-         sanitize-md:       40.0 i/s - 8.32x  slower
+selma-md: 333.0 i/s
+sanitize-md: 40.0 i/s - 8.32x slower
 
 input size = 7172510 bytes, 7.17 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         sanitize-lg     1.000 i/100ms
-            selma-lg     1.000 i/100ms
+sanitize-lg 1.000 i/100ms
+selma-lg 1.000 i/100ms
 Calculating -------------------------------------
-         sanitize-lg      0.141 (± 0.0%) i/s -      5.000 in  35.426127s
-            selma-lg      3.963 (± 0.0%) i/s -    119.000 in  30.037386s
+sanitize-lg 0.141 (± 0.0%) i/s - 5.000 in 35.426127s
+selma-lg 3.963 (± 0.0%) i/s - 119.000 in 30.037386s
 
 Comparison:
-            selma-lg:        4.0 i/s
-         sanitize-lg:        0.1 i/s - 28.03x  slower
+selma-lg: 4.0 i/s
+sanitize-lg: 0.1 i/s - 28.03x slower
+
 </pre>
 </details>
 <!-- prettier-ignore-end -->
@@ -267,52 +268,53 @@ input size = 25309 bytes, 0.03 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         nokogiri-sm    79.000 i/100ms
-       nokolexbor-sm   295.000 i/100ms
-            selma-sm   237.000 i/100ms
+nokogiri-sm 79.000 i/100ms
+nokolexbor-sm 295.000 i/100ms
+selma-sm 237.000 i/100ms
 Calculating -------------------------------------
-         nokogiri-sm    800.531 (± 2.2%) i/s -     24.016k in  30.016056s
-       nokolexbor-sm      3.033k (± 3.6%) i/s -     91.155k in  30.094884s
-            selma-sm      2.386k (± 1.6%) i/s -     71.574k in  30.001701s
+nokogiri-sm 800.531 (± 2.2%) i/s - 24.016k in 30.016056s
+nokolexbor-sm 3.033k (± 3.6%) i/s - 91.155k in 30.094884s
+selma-sm 2.386k (± 1.6%) i/s - 71.574k in 30.001701s
 
 Comparison:
-       nokolexbor-sm:     3033.1 i/s
-            selma-sm:     2386.3 i/s - 1.27x  slower
-         nokogiri-sm:      800.5 i/s - 3.79x  slower
+nokolexbor-sm: 3033.1 i/s
+selma-sm: 2386.3 i/s - 1.27x slower
+nokogiri-sm: 800.5 i/s - 3.79x slower
 
 input size = 86686 bytes, 0.09 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         nokogiri-md     8.000 i/100ms
-       nokolexbor-md    43.000 i/100ms
-            selma-md    38.000 i/100ms
+nokogiri-md 8.000 i/100ms
+nokolexbor-md 43.000 i/100ms
+selma-md 38.000 i/100ms
 Calculating -------------------------------------
-         nokogiri-md     85.013 (± 8.2%) i/s -      2.024k in  52.257472s
-       nokolexbor-md    416.074 (±11.1%) i/s -     12.341k in  30.111613s
-            selma-md    361.471 (± 4.7%) i/s -     10.830k in  30.033997s
+nokogiri-md 85.013 (± 8.2%) i/s - 2.024k in 52.257472s
+nokolexbor-md 416.074 (±11.1%) i/s - 12.341k in 30.111613s
+selma-md 361.471 (± 4.7%) i/s - 10.830k in 30.033997s
 
 Comparison:
-       nokolexbor-md:      416.1 i/s
-            selma-md:      361.5 i/s - same-ish: difference falls within error
-         nokogiri-md:       85.0 i/s - 4.89x  slower
+nokolexbor-md: 416.1 i/s
+selma-md: 361.5 i/s - same-ish: difference falls within error
+nokogiri-md: 85.0 i/s - 4.89x slower
 
 input size = 7172510 bytes, 7.17 MB
 
 ruby 3.3.0 (2023-12-25 revision 5124f9ac75) [arm64-darwin23]
 Warming up --------------------------------------
-         nokogiri-lg     1.000 i/100ms
-       nokolexbor-lg     1.000 i/100ms
-            selma-lg     1.000 i/100ms
+nokogiri-lg 1.000 i/100ms
+nokolexbor-lg 1.000 i/100ms
+selma-lg 1.000 i/100ms
 Calculating -------------------------------------
-         nokogiri-lg      0.805 (± 0.0%) i/s -     25.000 in  31.148730s
-       nokolexbor-lg      2.194 (± 0.0%) i/s -     66.000 in  30.278108s
-            selma-lg      5.541 (± 0.0%) i/s -    166.000 in  30.037197s
+nokogiri-lg 0.805 (± 0.0%) i/s - 25.000 in 31.148730s
+nokolexbor-lg 2.194 (± 0.0%) i/s - 66.000 in 30.278108s
+selma-lg 5.541 (± 0.0%) i/s - 166.000 in 30.037197s
 
 Comparison:
-            selma-lg:        5.5 i/s
-       nokolexbor-lg:        2.2 i/s - 2.53x  slower
-         nokogiri-lg:        0.8 i/s - 6.88x  slower
+selma-lg: 5.5 i/s
+nokolexbor-lg: 2.2 i/s - 2.53x slower
+nokogiri-lg: 0.8 i/s - 6.88x slower
+
 </pre>
 </details>
 <!-- prettier-ignore-end -->

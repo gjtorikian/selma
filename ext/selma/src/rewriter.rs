@@ -397,13 +397,13 @@ impl SelmaRewriter {
                     move |text| {
                         let element_stack = closure_element_stack.as_ref().borrow();
                         if selector.ignore_text_within().is_some() {
-                            // check if current tag is a tag we should be ignoring text within
-                            let head_tag_name = element_stack.last().unwrap().to_string();
+                            // check if current tag is a tag we should be ignoring text within;
+                            // also checks if tag is within an ancestery of ignored tags
                             if selector
                                 .ignore_text_within()
                                 .unwrap()
                                 .iter()
-                                .any(|f| f == &head_tag_name)
+                                .any(|t| element_stack.contains(t))
                             {
                                 return Ok(());
                             }
