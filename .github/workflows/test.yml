@@ -1,10 +1,10 @@
-name: CI
+name: Test
 
 on:
   pull_request:
 
 jobs:
-  test:
+  ci:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
