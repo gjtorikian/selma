@@ -1,3 +1,11 @@
+# [v0.4.11] - 29-12-2024
+## What's Changed
+* Bump lol_html from 2.0.0 to 2.1.0 by @dependabot in https://github.com/gjtorikian/selma/pull/88
+* Bump rb-sys from 0.9.103 to 0.9.104 by @dependabot in https://github.com/gjtorikian/selma/pull/89
+* Support Ruby 3.4 by @gjtorikian in https://github.com/gjtorikian/selma/pull/91
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.10...v0.4.11
 # [v0.4.10] - 26-11-2024
 ## What's Changed
 * Bump rb-sys from 0.9.102 to 0.9.103 by @dependabot in https://github.com/gjtorikian/selma/pull/84
