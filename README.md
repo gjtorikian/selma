@@ -95,8 +95,8 @@ whitespace_elements: ["blockquote", "h1", "h2", "h3", "h4", "h5", "h6", ]
 
 The real power in Selma comes in its use of handlers. A handler is simply an object with various methods defined:
 
-- `selector`, a method which MUST return instance of `Selma::Selector` which defines the CSS classes to match
-- `handle_element`, a method that's call on each matched element
+- `selector`, a method which MUST return an instance of `Selma::Selector`, defining the CSS classes to match
+- `handle_element`, a method that's called on each matched element
 - `handle_text_chunk`, a method that's called on each matched text node
 
 Here's an example which rewrites the `href` attribute on `a` and the `src` attribute on `img` to be `https` rather than `http`.
