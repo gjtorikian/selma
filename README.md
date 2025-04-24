@@ -142,7 +142,7 @@ class MatchText
   end
 
   def handle_text_chunk(text)
-    string.sub(/@.+/, "<a href=\"www.yetto.app/#{Regexp.last_match}\">")
+    text.replace(text.to_s, text.sub(/@.+/, "<a href=\"www.yetto.app/#{Regexp.last_match}\">"))
   end
 end
 
