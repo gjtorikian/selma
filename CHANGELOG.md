@@ -1,3 +1,17 @@
+# [v0.4.13] - 09-06-2025
+## What's Changed
+* Bump rb-sys from 0.9.106 to 0.9.107 by @dependabot in https://github.com/gjtorikian/selma/pull/97
+* Bump rb-sys from 0.9.107 to 0.9.108 by @dependabot in https://github.com/gjtorikian/selma/pull/98
+* Bump rb-sys from 0.9.108 to 0.9.109 by @dependabot in https://github.com/gjtorikian/selma/pull/99
+* Bump rb-sys from 0.9.109 to 0.9.110 by @dependabot in https://github.com/gjtorikian/selma/pull/100
+* Bump rb-sys from 0.9.110 to 0.9.111 by @dependabot in https://github.com/gjtorikian/selma/pull/101
+* Bump lol_html from 2.2.0 to 2.3.0 by @dependabot in https://github.com/gjtorikian/selma/pull/102
+* Bump rb-sys from 0.9.111 to 0.9.114 by @dependabot in https://github.com/gjtorikian/selma/pull/104
+* Bump lol_html from 2.3.0 to 2.4.0 by @dependabot in https://github.com/gjtorikian/selma/pull/107
+* Bump rb-sys from 0.9.114 to 0.9.116 by @dependabot in https://github.com/gjtorikian/selma/pull/108
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.12...v0.4.13
 # [v0.4.12] - 08-01-2025
 ## What's Changed
 * Bump lol_html from 2.1.0 to 2.2.0 by @dependabot in https://github.com/gjtorikian/selma/pull/93
