@@ -6,7 +6,7 @@ rust-version = "1.75.0"
 publish = false
 
 [dependencies]
-enum-iterator = "2.1"
+enum-iterator = "2.3"
 escapist = "0.0.2"
 magnus = { version = "0.8", features = ["rb-sys"] }
 rb-sys = { version = "*", default-features = false, features = [
