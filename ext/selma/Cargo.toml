@@ -12,7 +12,7 @@ magnus = { version = "0.8", features = ["rb-sys"] }
 rb-sys = { version = "*", default-features = false, features = [
     "stable-api-compiled-fallback",
 ] }
-lol_html = "2.6"
+lol_html = "2.7"
 
 [lib]
 name = "selma"
