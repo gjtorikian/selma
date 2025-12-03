@@ -13,8 +13,8 @@ Gem::Specification.new do |spec|
   spec.summary       = "Selma selects and matches HTML nodes using CSS rules. Backed by Rust's lol_html parser."
   spec.license       = "MIT"
 
-  spec.required_ruby_version = "~> 3.1"
-  spec.required_rubygems_version = "~> 3.4"
+  spec.required_ruby_version = ">= 3.2", "< 5"
+  spec.required_rubygems_version = ">= 3.4"
 
   spec.files = ["LICENSE.txt", "README.md", "Cargo.lock", "Cargo.toml"]
   spec.files += Dir.glob("lib/**/*.rb")
