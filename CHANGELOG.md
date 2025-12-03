@@ -1,3 +1,19 @@
+# [v0.4.14] - 03-12-2025
+## What's Changed
+* Bump lol_html from 2.4.0 to 2.5.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/110
+* Bump lol_html from 2.5.0 to 2.6.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/111
+* Bump rb-sys from 0.9.116 to 0.9.117 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/112
+* Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/113
+* Bump magnus from 0.7.1 to 0.8.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/114
+* Bump magnus from 0.8.0 to 0.8.1 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/115
+* Bump enum-iterator from 2.1.0 to 2.3.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/116
+* Bump magnus from 0.8.1 to 0.8.2 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/117
+* Bump lol_html from 2.6.0 to 2.7.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/118
+* Bump actions/checkout from 5 to 6 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/119
+* Support Ruby, RubyGems, and Bundler 4.x by @gjtorikian in https://github.com/gjtorikian/selma/pull/121
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.13...v0.4.14
 # [v0.4.13] - 09-06-2025
 ## What's Changed
 * Bump rb-sys from 0.9.106 to 0.9.107 by @dependabot in https://github.com/gjtorikian/selma/pull/97
