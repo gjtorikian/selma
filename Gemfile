@@ -16,7 +16,7 @@ end
 
 group :test do
   gem "gemojione", "~> 4.3", require: false
-  gem "minitest", "~> 5.0"
+  gem "minitest", "~> 6.0"
   gem "minitest-focus", "~> 1.2"
   gem "minitest-spec-context", "~> 0.0.4"
 end

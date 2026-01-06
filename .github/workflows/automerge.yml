@@ -1,6 +1,7 @@
 name: PR auto-{approve,merge}
 
 on:
+  workflow_dispatch:
   pull_request_target:
 
 permissions:
@@ -8,8 +9,6 @@ permissions:
   contents: write
 
 jobs:
-  dependabot:
-    uses: yettoapp/actions/.github/workflows/automerge_dependabot.yml@main
+  bot-check:
+    uses: gjtorikian/actions/.github/workflows/automerge.yml@main
     secrets: inherit
-    with: 
-      automerge: true
