@@ -1,3 +1,15 @@
+# [v0.4.15] - 06-01-2026
+## What's Changed
+* Bump rb-sys from 0.9.117 to 0.9.118 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/123
+* Bump rb-sys from 0.9.118 to 0.9.119 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/124
+* Bump actions/cache from 4 to 5 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/125
+* Bump rb-sys from 0.9.119 to 0.9.121 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/126
+* Bump rb-sys from 0.9.121 to 0.9.123 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/127
+* Bump rb-sys from 0.9.123 to 0.9.124 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/128
+* Build gems for Ruby 4 by @gjtorikian in https://github.com/gjtorikian/selma/pull/129
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.14...v0.4.15
 # [v0.4.14] - 03-12-2025
 ## What's Changed
 * Bump lol_html from 2.4.0 to 2.5.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/110
