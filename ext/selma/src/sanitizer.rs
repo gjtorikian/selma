@@ -5,7 +5,7 @@ use lol_html::{
     html_content::{Comment, ContentType, Doctype, Element, EndTag},
 };
 use magnus::{
-    class, eval, exception, function, method,
+    eval, function, method,
     r_hash::ForEach,
     scan_args,
     value::{Opaque, ReprValue},
@@ -125,22 +125,22 @@ impl SelmaSanitizer {
                 allowed_protocols.foreach(|element_name: String, protocols: RHash| {
                     protocols.foreach(|attribute_name: String, protocol_list: Value| {
                         let protocols: RArray;
-                        if protocol_list.is_kind_of(class::array()) {
+                        if protocol_list.is_kind_of(ruby.class_array()) {
                             protocols = RArray::from_value(protocol_list).unwrap();
                             if protocols.includes(ruby.to_symbol("all")) {
                                 return Err(magnus::Error::new(
-                                    exception::arg_error(),
+                                    ruby.exception_arg_error(),
                                     "`:all` must be passed outside of an array".to_string(),
                                 ));
                             }
-                        } else if protocol_list.is_kind_of(class::symbol())
+                        } else if protocol_list.is_kind_of(ruby.class_symbol())
                             && Symbol::from_value(protocol_list) == eval(":all").unwrap()
                         {
-                            protocols = RArray::new();
+                            protocols = ruby.ary_new();
                             protocols.push(ruby.to_symbol("all"))?;
                         } else {
                             return Err(magnus::Error::new(
-                                exception::arg_error(),
+                                ruby.exception_arg_error(),
                                 "Protocol list must be an array, or just `:all`".to_string(),
                             ));
                         }
@@ -220,15 +220,15 @@ impl SelmaSanitizer {
         //  end
         // end
         if let Some(remove_contents) = config.get(ruby.to_symbol("remove_contents")) {
-            if remove_contents.is_kind_of(class::true_class())
-                || remove_contents.is_kind_of(class::false_class())
+            if remove_contents.is_kind_of(ruby.class_true_class())
+                || remove_contents.is_kind_of(ruby.class_false_class())
             {
                 Self::set_all_flags(
                     flags,
                     Self::SELMA_SANITIZER_REMOVE_CONTENTS,
                     remove_contents.to_bool(),
                 );
-            } else if remove_contents.is_kind_of(class::array()) {
+            } else if remove_contents.is_kind_of(ruby.class_array()) {
                 let elements = RArray::from_value(remove_contents).unwrap();
                 elements
                     .into_iter()
@@ -245,7 +245,7 @@ impl SelmaSanitizer {
                     });
             } else {
                 return Err(magnus::Error::new(
-                    exception::arg_error(),
+                    ruby.exception_arg_error(),
                     "remove_contents must be `true`, `false`, or an array".to_string(),
                 ));
             }
@@ -354,11 +354,12 @@ impl SelmaSanitizer {
         attr_name: String,
         allow_list: RArray,
     ) {
+        let ruby = Ruby::get().unwrap();
         let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers.borrow_mut();
 
         for allowed_protocol in allow_list.into_iter() {
             let protocol_list = protocol_sanitizers.get_mut(&attr_name);
-            if allowed_protocol.is_kind_of(class::string()) {
+            if allowed_protocol.is_kind_of(ruby.class_string()) {
                 match protocol_list {
                     None => {
                         protocol_sanitizers
@@ -366,7 +367,7 @@ impl SelmaSanitizer {
                     }
                     Some(protocol_list) => protocol_list.push(allowed_protocol.to_string()),
                 }
-            } else if allowed_protocol.is_kind_of(class::symbol()) {
+            } else if allowed_protocol.is_kind_of(ruby.class_symbol()) {
                 let protocol_config = allowed_protocol.inspect();
                 if protocol_config == ":relative" {
                     match protocol_list {
@@ -685,13 +686,11 @@ impl SelmaSanitizer {
 
     fn check_if_end_tag_needs_removal(element: &mut Element) {
         if element.removed() && !crate::tags::Tag::tag_from_element(element).self_closing {
-            element
-                .end_tag_handlers()
-                .unwrap()
-                .push(Box::new(move |end| {
-                    Self::remove_end_tag(end);
-                    Ok(())
-                }));
+            // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
+            let _ = element.on_end_tag(Box::new(move |end| {
+                Self::remove_end_tag(end);
+                Ok(())
+            }));
         }
     }
 
@@ -710,8 +709,9 @@ impl SelmaSanitizer {
 }
 
 pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
+    let ruby = Ruby::get().unwrap();
     let c_sanitizer = m_selma
-        .define_class("Sanitizer", magnus::class::object())
+        .define_class("Sanitizer", ruby.class_object())
         .expect("cannot define class Selma::Sanitizer");
 
     c_sanitizer.define_singleton_method("new", function!(SelmaSanitizer::new, -1))?;

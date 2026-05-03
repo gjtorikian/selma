@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::{TextChunk, TextType};
-use magnus::{exception, method, Error, Module, RClass, Symbol, Value};
+use magnus::{method, Error, Module, RClass, Ruby, Symbol, Value};
 
 struct HTMLTextChunk {
     text_chunk: NativeRefWrap<TextChunk<'static>>,
@@ -49,7 +49,7 @@ impl SelmaHTMLTextChunk {
             Ok(tc.as_str().to_string())
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`to_s` is not available",
             ))
         }
@@ -57,19 +57,20 @@ impl SelmaHTMLTextChunk {
 
     fn text_type(&self) -> Result<Symbol, Error> {
         let binding = self.0.borrow();
+        let ruby = Ruby::get().unwrap();
 
         if let Ok(tc) = binding.text_chunk.get() {
             match tc.text_type() {
-                TextType::Data => Ok(Symbol::new("data")),
-                TextType::PlainText => Ok(Symbol::new("plain_text")),
-                TextType::RawText => Ok(Symbol::new("raw_text")),
-                TextType::ScriptData => Ok(Symbol::new("script")),
-                TextType::RCData => Ok(Symbol::new("rc_data")),
-                TextType::CDataSection => Ok(Symbol::new("cdata_section")),
+                TextType::Data => Ok(ruby.to_symbol("data")),
+                TextType::PlainText => Ok(ruby.to_symbol("plain_text")),
+                TextType::RawText => Ok(ruby.to_symbol("raw_text")),
+                TextType::ScriptData => Ok(ruby.to_symbol("script")),
+                TextType::RCData => Ok(ruby.to_symbol("rc_data")),
+                TextType::CDataSection => Ok(ruby.to_symbol("cdata_section")),
             }
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                ruby.exception_runtime_error(),
                 "`text_type` is not available",
             ))
         }
@@ -81,7 +82,7 @@ impl SelmaHTMLTextChunk {
         match binding.text_chunk.get() {
             Ok(tc) => Ok(tc.removed()),
             Err(_) => Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`is_removed` is not available",
             )),
         }
@@ -140,8 +141,9 @@ impl SelmaHTMLTextChunk {
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
+    let ruby = Ruby::get().unwrap();
     let c_text_chunk = c_html
-        .define_class("TextChunk", magnus::class::object())
+        .define_class("TextChunk", ruby.class_object())
         .expect("cannot define class Selma::HTML::TextChunk");
 
     c_text_chunk.define_method("to_s", method!(SelmaHTMLTextChunk::to_s, 0))?;

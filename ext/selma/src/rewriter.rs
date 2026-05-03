@@ -5,7 +5,7 @@ use lol_html::{
     Settings,
 };
 use magnus::{
-    exception, function, gc, method,
+    function, gc, method,
     r_hash::ForEach,
     scan_args,
     typed_data::Obj,
@@ -84,12 +84,13 @@ impl SelmaRewriter {
     /// @return [Selma::Rewriter]
     fn new(args: &[Value]) -> Result<Self, magnus::Error> {
         let (rb_sanitizer, rb_handlers, rb_options) = Self::scan_parse_args(args)?;
+        let ruby = Ruby::get().unwrap();
 
         let sanitizer = match rb_sanitizer {
             None => {
                 // no `sanitizer:` kwarg provided, use default
                 let default_sanitizer = SelmaSanitizer::new(&[])?;
-                let wrapped_sanitizer = Obj::wrap(default_sanitizer);
+                let wrapped_sanitizer = ruby.obj_wrap(default_sanitizer);
                 // wrapped_sanitizer.funcall::<&str, (), Value>("setup", ())?;
                 Some(wrapped_sanitizer.deref().to_owned())
             }
@@ -106,7 +107,7 @@ impl SelmaRewriter {
                     if !rb_handler.respond_to("selector", true).unwrap() {
                         let classname = unsafe { rb_handler.classname() };
                         return Err(magnus::Error::new(
-                            exception::no_method_error(),
+                            ruby.exception_no_method_error(),
                             format!(
                                 "Could not call #selector on {classname:?}; is this an object that defines it?",
 
@@ -117,7 +118,7 @@ impl SelmaRewriter {
                     let rb_selector: Obj<SelmaSelector> = match rb_handler.funcall("selector", ()) {
                         Err(err) => {
                             return Err(magnus::Error::new(
-                                exception::type_error(),
+                                ruby.exception_type_error(),
                                 format!("Error instantiating selector: {err:?}"),
                             ));
                         }
@@ -140,7 +141,7 @@ impl SelmaRewriter {
 
         if sanitizer.is_none() && handlers.is_empty() {
             return Err(magnus::Error::new(
-                exception::arg_error(),
+                ruby.exception_arg_error(),
                 "Must provide a sanitizer or a handler",
             ));
         }
@@ -151,23 +152,22 @@ impl SelmaRewriter {
             None => {}
             Some(options) => {
                 options.foreach(|key: Symbol, value: RHash| {
+                    let ruby = Ruby::get().unwrap();
                     let key = key.to_string();
                     match key.as_str() {
                         "memory" => {
-                            let max_allowed_memory_usage = value.get(Symbol::new("max_allowed_memory_usage"));
-                            if max_allowed_memory_usage.is_some() {
-                                let max_allowed_memory_usage = max_allowed_memory_usage.unwrap();
+                            if let Some(max_allowed_memory_usage) = value.get(ruby.to_symbol("max_allowed_memory_usage")) {
                                 let max_allowed_memory_usage =
                                     Integer::from_value(max_allowed_memory_usage);
-                                if max_allowed_memory_usage.is_some() {
-                                    match max_allowed_memory_usage.unwrap().to_u64() {
+                                if let Some(max_allowed_memory_usage) = max_allowed_memory_usage {
+                                    match max_allowed_memory_usage.to_u64() {
                                         Ok(max_allowed_memory_usage) => {
                                             rewriter_options.memory_options.max_allowed_memory_usage =
                                                 max_allowed_memory_usage as usize;
                                         }
                                         Err(_e) => {
                                             return Err(magnus::Error::new(
-                                                exception::arg_error(),
+                                                ruby.exception_arg_error(),
                                                 "max_allowed_memory_usage must be a positive integer",
                                             ));
                                         }
@@ -177,20 +177,18 @@ impl SelmaRewriter {
                                 }
                             }
 
-                            let preallocated_parsing_buffer_size = value.get(Symbol::new("preallocated_parsing_buffer_size"));
-                            if preallocated_parsing_buffer_size.is_some() {
-                                let preallocated_parsing_buffer_size = preallocated_parsing_buffer_size.unwrap();
+                            if let Some(preallocated_parsing_buffer_size) = value.get(ruby.to_symbol("preallocated_parsing_buffer_size")) {
                                 let preallocated_parsing_buffer_size =
                                     Integer::from_value(preallocated_parsing_buffer_size);
-                                if preallocated_parsing_buffer_size.is_some() {
-                                    match preallocated_parsing_buffer_size.unwrap().to_u64() {
+                                if let Some(preallocated_parsing_buffer_size) = preallocated_parsing_buffer_size {
+                                    match preallocated_parsing_buffer_size.to_u64() {
                                         Ok(preallocated_parsing_buffer_size) => {
                                             rewriter_options.memory_options.preallocated_parsing_buffer_size =
                                                 preallocated_parsing_buffer_size as usize;
                                         }
                                         Err(_e) => {
                                             return Err(magnus::Error::new(
-                                                exception::arg_error(),
+                                                ruby.exception_arg_error(),
                                                 "preallocated_parsing_buffer_size must be a positive integer",
                                             ));
                                         }
@@ -202,7 +200,7 @@ impl SelmaRewriter {
                         }
                         _ => {
                             return Err(magnus::Error::new(
-                                exception::arg_error(),
+                                ruby.exception_arg_error(),
                                 format!("Unknown option: {key:?}"),
                             ));
                         }
@@ -218,7 +216,7 @@ impl SelmaRewriter {
             > rewriter_options.memory_options.max_allowed_memory_usage
         {
             return Err(magnus::Error::new(
-                exception::arg_error(),
+                ruby.exception_arg_error(),
                 "max_allowed_memory_usage must be greater than preallocated_parsing_buffer_size",
             ));
         }
@@ -305,7 +303,7 @@ impl SelmaRewriter {
                 None => match String::from_utf8(rewritten_html) {
                     Ok(output) => Ok(output),
                     Err(err) => Err(magnus::Error::new(
-                        exception::runtime_error(),
+                        Ruby::get().unwrap().exception_runtime_error(),
                         format!("{err:?}"),
                     )),
                 },
@@ -342,7 +340,7 @@ impl SelmaRewriter {
             Ok(rewritten_html) => match String::from_utf8(rewritten_html) {
                 Ok(output) => Ok(output),
                 Err(err) => Err(magnus::Error::new(
-                    exception::runtime_error(),
+                    Ruby::get().unwrap().exception_runtime_error(),
                     format!("{err:?}"),
                 )),
             },
@@ -430,14 +428,12 @@ impl SelmaRewriter {
 
                 let closure_element_stack = element_stack.clone();
 
-                if let Some(end_tag_handlers) = el.end_tag_handlers() {
-                    end_tag_handlers.push(lol_html::EndTagHandler::into(Box::new(
-                        move |_end_tag| {
-                            closure_element_stack.as_ref().borrow_mut().pop();
-                            Ok(())
-                        },
-                    )));
-                }
+                let handler: lol_html::EndTagHandler<'static> = Box::new(move |_end_tag| {
+                    closure_element_stack.as_ref().borrow_mut().pop();
+                    Ok(())
+                });
+                // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
+                let _ = el.on_end_tag(handler);
 
                 Ok(())
             }));
@@ -473,7 +469,7 @@ impl SelmaRewriter {
                 Ok(_) => {}
                 Err(err) => {
                     return Err(magnus::Error::new(
-                        exception::runtime_error(),
+                        Ruby::get().unwrap().exception_runtime_error(),
                         format!("{err:?}"),
                     ));
                 }
@@ -487,15 +483,13 @@ impl SelmaRewriter {
         element: &mut Element,
         ancestors: &[String],
     ) -> Result<(), magnus::Error> {
-        let rb_handler = handler.rb_handler.into_value();
+        let ruby = Ruby::get().unwrap();
+        let rb_handler = handler.rb_handler.into_value_with(&ruby);
 
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
-            // TODO: error here is an "EndTagError"
             element
-                .end_tag_handlers()
-                .unwrap()
-                .push(Box::new(move |end_tag| {
+                .on_end_tag(Box::new(move |end_tag| {
                     let (ref_wrap, anchor) = NativeRefWrap::wrap(end_tag);
 
                     let rb_end_tag = SelmaHTMLEndTag::new(ref_wrap);
@@ -509,7 +503,13 @@ impl SelmaRewriter {
                         Ok(_) => Ok(()),
                         Err(err) => Err(err.to_string().into()),
                     }
-                }));
+                }))
+                .map_err(|err| {
+                    magnus::Error::new(
+                        Ruby::get().unwrap().exception_runtime_error(),
+                        err.to_string(),
+                    )
+                })?;
         }
 
         let (ref_wrap, anchor) = NativeRefWrap::wrap(element);
@@ -521,7 +521,7 @@ impl SelmaRewriter {
         match result {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
-                exception::runtime_error(),
+                ruby.exception_runtime_error(),
                 format!("{err:?}"),
             )),
         }
@@ -531,7 +531,8 @@ impl SelmaRewriter {
         handler: &Handler,
         text_chunk: &mut TextChunk,
     ) -> Result<(), magnus::Error> {
-        let rb_handler = handler.rb_handler.into_value();
+        let ruby = Ruby::get().unwrap();
+        let rb_handler = handler.rb_handler.into_value_with(&ruby);
 
         // prevents missing `handle_text_chunk` function
         let content = text_chunk.as_str();
@@ -553,7 +554,7 @@ impl SelmaRewriter {
         match result {
             Ok(_) => Ok(()),
             Err(err) => Err(magnus::Error::new(
-                exception::runtime_error(),
+                ruby.exception_runtime_error(),
                 format!("{err:?}"),
             )),
         }
@@ -577,8 +578,9 @@ impl RewriterOptions {
 }
 
 pub fn init(m_selma: RModule) -> Result<(), magnus::Error> {
+    let ruby = Ruby::get().unwrap();
     let c_rewriter = m_selma
-        .define_class("Rewriter", magnus::class::object())
+        .define_class("Rewriter", ruby.class_object())
         .expect("cannot define class Selma::Rewriter");
 
     c_rewriter.define_singleton_method("new", function!(SelmaRewriter::new, -1))?;

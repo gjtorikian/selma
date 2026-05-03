@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::Element;
-use magnus::{exception, method, Error, Module, RArray, RClass, RHash, RString, Value};
+use magnus::{method, Error, Module, RArray, RClass, RHash, Ruby, Value};
 
 struct HTMLElement {
     element: NativeRefWrap<Element<'static, 'static>>,
@@ -29,7 +29,7 @@ impl SelmaHTMLElement {
         match binding.element.get() {
             Ok(e) => Ok(e.tag_name().to_string()),
             Err(_) => Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`tag_name` is not available",
             )),
         }
@@ -37,15 +37,19 @@ impl SelmaHTMLElement {
 
     fn set_tag_name(&self, name: String) -> Result<(), Error> {
         let mut binding = self.0.borrow_mut();
+        let ruby = Ruby::get().unwrap();
 
         if let Ok(element) = binding.element.get_mut() {
             match element.set_tag_name(&name) {
                 Ok(_) => Ok(()),
-                Err(err) => Err(Error::new(exception::runtime_error(), format!("{err:?}"))),
+                Err(err) => Err(Error::new(
+                    ruby.exception_runtime_error(),
+                    format!("{err:?}"),
+                )),
             }
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                ruby.exception_runtime_error(),
                 "`set_tag_name` is not available",
             ))
         }
@@ -58,7 +62,7 @@ impl SelmaHTMLElement {
             Ok(e.is_self_closing())
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`is_self_closing` is not available",
             ))
         }
@@ -71,7 +75,7 @@ impl SelmaHTMLElement {
             Ok(e.has_attribute(&attr))
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`is_self_closing` is not available",
             ))
         }
@@ -85,17 +89,18 @@ impl SelmaHTMLElement {
 
     fn set_attribute(&self, attr: String, value: String) -> Result<String, Error> {
         let mut binding = self.0.borrow_mut();
+        let ruby = Ruby::get().unwrap();
         if let Ok(element) = binding.element.get_mut() {
             match element.set_attribute(&attr, &value) {
                 Ok(_) => Ok(value),
                 Err(err) => Err(Error::new(
-                    exception::runtime_error(),
+                    ruby.exception_runtime_error(),
                     format!("AttributeNameError: {err:?}"),
                 )),
             }
         } else {
             Err(Error::new(
-                exception::runtime_error(),
+                ruby.exception_runtime_error(),
                 "`tag_name` is not available",
             ))
         }
@@ -111,7 +116,8 @@ impl SelmaHTMLElement {
 
     fn get_attributes(&self) -> Result<RHash, Error> {
         let binding = self.0.borrow();
-        let hash = RHash::new();
+        let ruby = Ruby::get().unwrap();
+        let hash = ruby.hash_new();
 
         if let Ok(e) = binding.element.get() {
             e.attributes()
@@ -121,7 +127,7 @@ impl SelmaHTMLElement {
                     Err(err) => panic!(
                         "{:?}",
                         Error::new(
-                            exception::runtime_error(),
+                            ruby.exception_runtime_error(),
                             format!("AttributeNameError: {err:?}"),
                         )
                     ),
@@ -132,17 +138,18 @@ impl SelmaHTMLElement {
 
     fn get_ancestors(&self) -> Result<RArray, Error> {
         let binding = self.0.borrow();
-        let array = RArray::new();
+        let ruby = Ruby::get().unwrap();
+        let array = ruby.ary_new();
 
         binding
             .ancestors
             .iter()
-            .for_each(|ancestor| match array.push(RString::new(ancestor)) {
+            .for_each(|ancestor| match array.push(ruby.str_new(ancestor)) {
                 Ok(_) => {}
                 Err(err) => {
                     panic!(
                         "{:?}",
-                        Error::new(exception::runtime_error(), format!("{err:?}"))
+                        Error::new(ruby.exception_runtime_error(), format!("{err:?}"))
                     )
                 }
             });
@@ -244,7 +251,7 @@ impl SelmaHTMLElement {
         match binding.element.get() {
             Ok(e) => Ok(e.removed()),
             Err(_) => Err(Error::new(
-                exception::runtime_error(),
+                Ruby::get().unwrap().exception_runtime_error(),
                 "`is_removed` is not available",
             )),
         }
@@ -252,8 +259,9 @@ impl SelmaHTMLElement {
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
+    let ruby = Ruby::get().unwrap();
     let c_element = c_html
-        .define_class("Element", magnus::class::object())
+        .define_class("Element", ruby.class_object())
         .expect("cannot define class Selma::HTML::Element");
 
     c_element.define_method("tag_name", method!(SelmaHTMLElement::tag_name, 0))?;

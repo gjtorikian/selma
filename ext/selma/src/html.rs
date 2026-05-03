@@ -1,12 +1,9 @@
-use magnus::{Error, Module, RModule};
-
-#[derive(Clone, Debug)]
-#[magnus::wrap(class = "Selma::HTML")]
-pub(crate) struct SelmaHTML {}
+use magnus::{Error, Module, RModule, Ruby};
 
 pub fn init(m_selma: RModule) -> Result<(), Error> {
+    let ruby = Ruby::get().unwrap();
     let c_html = m_selma
-        .define_class("HTML", magnus::class::object())
+        .define_class("HTML", ruby.class_object())
         .expect("cannot define class Selma::HTML");
 
     element::init(c_html).expect("cannot define Selma::HTML::Element class");
