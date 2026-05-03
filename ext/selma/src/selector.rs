@@ -1,4 +1,4 @@
-use magnus::{exception, function, scan_args, Error, Module, Object, RModule, Value};
+use magnus::{function, scan_args, Error, Module, Object, RModule, Ruby, Value};
 
 #[derive(Clone, Debug)]
 #[magnus::wrap(class = "Selma::Selector")]
@@ -14,31 +14,30 @@ impl SelmaSelector {
     fn new(args: &[Value]) -> Result<Self, Error> {
         let (match_element, match_text_within, rb_ignore_text_within) =
             Self::scan_parse_args(args)?;
+        let ruby = Ruby::get().unwrap();
 
         if match_element.is_none() && match_text_within.is_none() {
             return Err(Error::new(
-                exception::arg_error(),
+                ruby.exception_arg_error(),
                 "Neither `match_element` nor `match_text_within` option given",
             ));
         }
 
         // FIXME: not excited about this double parse work (`element!` does it too),
         // but at least we can bail ASAP if the CSS is invalid
-        if match_element.is_some() {
-            let css = match_element.as_ref().unwrap();
+        if let Some(css) = &match_element {
             if css.parse::<lol_html::Selector>().is_err() {
                 return Err(Error::new(
-                    exception::arg_error(),
+                    ruby.exception_arg_error(),
                     format!("Could not parse `match_element` (`{css:?}`) as valid CSS"),
                 ));
             }
         }
 
-        if match_text_within.is_some() {
-            let css = match_text_within.as_ref().unwrap();
+        if let Some(css) = &match_text_within {
             if css.parse::<lol_html::Selector>().is_err() {
                 return Err(Error::new(
-                    exception::arg_error(),
+                    ruby.exception_arg_error(),
                     format!("Could not parse `match_text_within` (`{css:?}`) as valid CSS",),
                 ));
             }
@@ -102,8 +101,9 @@ impl SelmaSelector {
 }
 
 pub fn init(m_selma: RModule) -> Result<(), Error> {
+    let ruby = Ruby::get().unwrap();
     let c_selector = m_selma
-        .define_class("Selector", magnus::class::object())
+        .define_class("Selector", ruby.class_object())
         .expect("cannot define class Selma::Selector");
 
     c_selector.define_singleton_method("new", function!(SelmaSelector::new, -1))?;

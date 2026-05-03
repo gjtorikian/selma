@@ -1,7 +1,7 @@
 extern crate core;
 
 use lol_html::html_content::ContentType;
-use magnus::{define_module, exception, scan_args, Error, Symbol, Value};
+use magnus::{scan_args, Error, Ruby, Symbol, Value};
 
 pub mod html;
 pub mod native_ref_wrap;
@@ -27,8 +27,9 @@ fn scan_text_args(args: &[Value]) -> Result<(String, ContentType), magnus::Error
     } else if as_sym_str == "html" {
         ContentType::Html
     } else {
+        let ruby = Ruby::get().unwrap();
         return Err(Error::new(
-            exception::runtime_error(),
+            ruby.exception_runtime_error(),
             format!("unknown symbol `{as_sym_str:?}`"),
         ));
     };
@@ -37,8 +38,8 @@ fn scan_text_args(args: &[Value]) -> Result<(String, ContentType), magnus::Error
 }
 
 #[magnus::init]
-fn init() -> Result<(), Error> {
-    let m_selma = define_module("Selma").expect("cannot define ::Selma module");
+fn init(ruby: &Ruby) -> Result<(), Error> {
+    let m_selma = ruby.define_module("Selma").expect("cannot define ::Selma module");
 
     sanitizer::init(m_selma).expect("cannot define Selma::Sanitizer class");
     rewriter::init(m_selma).expect("cannot define Selma::Rewriter class");
