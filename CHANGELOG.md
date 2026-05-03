@@ -1,3 +1,15 @@
+# [v0.5.0] - 03-05-2026
+## What's Changed
+* Bump lol_html from 2.7.0 to 2.7.1 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/131
+* Bump lol_html from 2.7.1 to 2.7.2 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/132
+* Bump lol_html from 2.7.2 to 2.8.1 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/136
+* Bump rb-sys from 0.9.124 to 0.9.127 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/135
+* Use lol_html's on_end_tag convenience method by @gjtorikian in https://github.com/gjtorikian/selma/pull/137
+* Test nested :not() selector support by @gjtorikian in https://github.com/gjtorikian/selma/pull/138
+* prepare next release by @gjtorikian in https://github.com/gjtorikian/selma/pull/139
+
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.4.15...v0.5.0
 # [v0.4.15] - 06-01-2026
 ## What's Changed
 * Bump rb-sys from 0.9.117 to 0.9.118 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/123
