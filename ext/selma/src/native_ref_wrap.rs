@@ -39,7 +39,7 @@ pub struct NativeRefWrap<R> {
 }
 
 impl<R> NativeRefWrap<R> {
-    pub fn wrap<I>(inner: &mut I) -> (Self, Anchor) {
+    pub fn wrap<I>(inner: &mut I) -> (Self, Anchor<'_>) {
         let wrap = NativeRefWrap {
             inner_ptr: inner as *mut I as *mut R,
             poisoned: Arc::new(Mutex::new(false)),

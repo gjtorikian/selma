@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::native_ref_wrap::NativeRefWrap;
 use lol_html::html_content::EndTag;
-use magnus::{method, Error, Module, RClass};
+use magnus::{method, Error, Module, RClass, Ruby};
 
 struct HTMLEndTag {
     end_tag: NativeRefWrap<EndTag<'static>>,
@@ -25,8 +25,9 @@ impl SelmaHTMLEndTag {
 }
 
 pub fn init(c_html: RClass) -> Result<(), Error> {
+    let ruby = Ruby::get().unwrap();
     let c_end_tag = c_html
-        .define_class("EndTag", magnus::class::object())
+        .define_class("EndTag", ruby.class_object())
         .expect("cannot define class Selma::HTML::EndTag");
 
     c_end_tag.define_method("tag_name", method!(SelmaHTMLEndTag::tag_name, 0))?;
