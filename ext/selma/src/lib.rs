@@ -39,7 +39,9 @@ fn scan_text_args(args: &[Value]) -> Result<(String, ContentType), magnus::Error
 
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
-    let m_selma = ruby.define_module("Selma").expect("cannot define ::Selma module");
+    let m_selma = ruby
+        .define_module("Selma")
+        .expect("cannot define ::Selma module");
 
     sanitizer::init(m_selma).expect("cannot define Selma::Sanitizer class");
     rewriter::init(m_selma).expect("cannot define Selma::Rewriter class");

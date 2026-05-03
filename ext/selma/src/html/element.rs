@@ -42,7 +42,10 @@ impl SelmaHTMLElement {
         if let Ok(element) = binding.element.get_mut() {
             match element.set_tag_name(&name) {
                 Ok(_) => Ok(()),
-                Err(err) => Err(Error::new(ruby.exception_runtime_error(), format!("{err:?}"))),
+                Err(err) => Err(Error::new(
+                    ruby.exception_runtime_error(),
+                    format!("{err:?}"),
+                )),
             }
         } else {
             Err(Error::new(

@@ -505,7 +505,10 @@ impl SelmaRewriter {
                     }
                 }))
                 .map_err(|err| {
-                    magnus::Error::new(Ruby::get().unwrap().exception_runtime_error(), err.to_string())
+                    magnus::Error::new(
+                        Ruby::get().unwrap().exception_runtime_error(),
+                        err.to_string(),
+                    )
                 })?;
         }
 
