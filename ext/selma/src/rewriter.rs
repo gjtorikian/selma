@@ -430,14 +430,12 @@ impl SelmaRewriter {
 
                 let closure_element_stack = element_stack.clone();
 
-                if let Some(end_tag_handlers) = el.end_tag_handlers() {
-                    end_tag_handlers.push(lol_html::EndTagHandler::into(Box::new(
-                        move |_end_tag| {
-                            closure_element_stack.as_ref().borrow_mut().pop();
-                            Ok(())
-                        },
-                    )));
-                }
+                let handler: lol_html::EndTagHandler<'static> = Box::new(move |_end_tag| {
+                    closure_element_stack.as_ref().borrow_mut().pop();
+                    Ok(())
+                });
+                // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
+                let _ = el.on_end_tag(handler);
 
                 Ok(())
             }));
@@ -491,11 +489,8 @@ impl SelmaRewriter {
 
         // if `on_end_tag` function is defined, call it
         if rb_handler.respond_to(Self::SELMA_ON_END_TAG, true).unwrap() {
-            // TODO: error here is an "EndTagError"
             element
-                .end_tag_handlers()
-                .unwrap()
-                .push(Box::new(move |end_tag| {
+                .on_end_tag(Box::new(move |end_tag| {
                     let (ref_wrap, anchor) = NativeRefWrap::wrap(end_tag);
 
                     let rb_end_tag = SelmaHTMLEndTag::new(ref_wrap);
@@ -509,7 +504,10 @@ impl SelmaRewriter {
                         Ok(_) => Ok(()),
                         Err(err) => Err(err.to_string().into()),
                     }
-                }));
+                }))
+                .map_err(|err| {
+                    magnus::Error::new(exception::runtime_error(), err.to_string())
+                })?;
         }
 
         let (ref_wrap, anchor) = NativeRefWrap::wrap(element);
