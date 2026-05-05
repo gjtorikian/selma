@@ -10,13 +10,15 @@ updates:
   - package-ecosystem: bundler
     directory: "/"
     schedule:
-      interval: daily
-      time: "11:00"
+      interval: monthly
+      time: "09:00"
+      timezone: "Etc/UTC"
     open-pull-requests-limit: 10
 
   - package-ecosystem: cargo
     directory: "/"
     schedule:
-      interval: daily
-      time: "11:00"
+      interval: monthly
+      time: "09:00"
+      timezone: "Etc/UTC"
     open-pull-requests-limit: 10
