@@ -161,6 +161,7 @@ The `element` argument in `handle_element` has the following methods:
 - `remove_attribute`: Remove an attribute
 - `has_attribute?`: A bool which identifies whether or not the element has an attribute
 - `attributes`: List all the attributes
+- `attribute_source_location(name)`: Returns the byte ranges of an attribute's name and value within the original input as `{ name: Range, value: Range | nil }`, or `nil` if the attribute is missing or was added/modified during the rewrite. Pure boolean attributes written without `=` (e.g. `<input disabled>`) return `nil` because lol_html does not record their position.
 - `ancestors`: List all of an element's ancestors as an array of strings
 - `before(content, as: content_type)`: Inserts `content` before the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
 - `after(content, as: content_type)`: Inserts `content` after the element. `content_type` is either `:text` or `:html` and determines how the content will be applied.
