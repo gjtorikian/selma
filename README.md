@@ -158,6 +158,7 @@ The `element` argument in `handle_element` has the following methods:
 - `self_closing?`: A bool which identifies whether or not the element is self-closing
 - `[]`: Get an attribute
 - `[]=`: Set an attribute
+- `add_attribute`: Add a valueless attribute (e.g., `data-foo`); equivalent to setting the attribute to an empty string
 - `remove_attribute`: Remove an attribute
 - `has_attribute?`: A bool which identifies whether or not the element has an attribute
 - `attributes`: List all the attributes

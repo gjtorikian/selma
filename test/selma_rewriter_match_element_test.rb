@@ -307,6 +307,32 @@ class SelmaRewriterMatchElementTest < Minitest::Test
     Selma::Rewriter.new(sanitizer: nil, handlers: [GetHasAttr.new]).rewrite(frag)
   end
 
+  class AddAttribute
+    SELECTOR = Selma::Selector.new(match_element: "p")
+
+    def selector
+      SELECTOR
+    end
+
+    def handle_element(element)
+      element.add_attribute("data-this-is-special")
+    end
+  end
+
+  def test_that_it_adds_a_valueless_attribute
+    frag = "<p>Wow!</p>"
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AddAttribute.new]).rewrite(frag)
+
+    assert_equal(%(<p data-this-is-special="">Wow!</p>), modified_doc)
+  end
+
+  def test_that_add_attribute_does_not_overwrite_existing_value
+    frag = %(<p data-this-is-special="yes">Wow!</p>)
+    modified_doc = Selma::Rewriter.new(sanitizer: nil, handlers: [AddAttribute.new]).rewrite(frag)
+
+    assert_equal(%(<p data-this-is-special="yes">Wow!</p>), modified_doc)
+  end
+
   class RemoveElement < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
