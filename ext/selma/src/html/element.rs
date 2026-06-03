@@ -142,7 +142,10 @@ impl SelmaHTMLElement {
         match attribute.value_source_location() {
             Some(loc) => {
                 let r = loc.bytes();
-                hash.aset(ruby.to_symbol("value"), ruby.range_new(r.start, r.end, true)?)?;
+                hash.aset(
+                    ruby.to_symbol("value"),
+                    ruby.range_new(r.start, r.end, true)?,
+                )?;
             }
             None => {
                 hash.aset(ruby.to_symbol("value"), ruby.qnil())?;
