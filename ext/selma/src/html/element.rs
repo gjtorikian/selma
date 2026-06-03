@@ -294,10 +294,7 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
     )?;
     c_element.define_method("[]", method!(SelmaHTMLElement::get_attribute, 1))?;
     c_element.define_method("[]=", method!(SelmaHTMLElement::set_attribute, 2))?;
-    c_element.define_method(
-        "add_attribute",
-        method!(SelmaHTMLElement::add_attribute, 1),
-    )?;
+    c_element.define_method("add_attribute", method!(SelmaHTMLElement::add_attribute, 1))?;
     c_element.define_method(
         "remove_attribute",
         method!(SelmaHTMLElement::remove_attribute, 1),
