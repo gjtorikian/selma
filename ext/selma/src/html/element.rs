@@ -114,6 +114,44 @@ impl SelmaHTMLElement {
         }
     }
 
+    fn get_attribute_source_location(&self, attr: String) -> Result<Option<RHash>, Error> {
+        let binding = self.0.borrow();
+        let ruby = Ruby::get().unwrap();
+
+        let Ok(e) = binding.element.get() else {
+            return Ok(None);
+        };
+
+        let lowered = attr.to_lowercase();
+        let attrs = e.attributes();
+        let Some(attribute) = attrs.iter().find(|a| a.name() == lowered) else {
+            return Ok(None);
+        };
+
+        let Some(name_loc) = attribute.name_source_location() else {
+            return Ok(None);
+        };
+
+        let hash = ruby.hash_new();
+        let name_range = name_loc.bytes();
+        hash.aset(
+            ruby.to_symbol("name"),
+            ruby.range_new(name_range.start, name_range.end, true)?,
+        )?;
+
+        match attribute.value_source_location() {
+            Some(loc) => {
+                let r = loc.bytes();
+                hash.aset(ruby.to_symbol("value"), ruby.range_new(r.start, r.end, true)?)?;
+            }
+            None => {
+                hash.aset(ruby.to_symbol("value"), ruby.qnil())?;
+            }
+        }
+
+        Ok(Some(hash))
+    }
+
     fn get_attributes(&self) -> Result<RHash, Error> {
         let binding = self.0.borrow();
         let ruby = Ruby::get().unwrap();
@@ -281,6 +319,10 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
         method!(SelmaHTMLElement::has_attribute, 1),
     )?;
     c_element.define_method("attributes", method!(SelmaHTMLElement::get_attributes, 0))?;
+    c_element.define_method(
+        "attribute_source_location",
+        method!(SelmaHTMLElement::get_attribute_source_location, 1),
+    )?;
     c_element.define_method("ancestors", method!(SelmaHTMLElement::get_ancestors, 0))?;
 
     c_element.define_method("before", method!(SelmaHTMLElement::before, -1))?;
