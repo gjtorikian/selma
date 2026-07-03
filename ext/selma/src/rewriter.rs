@@ -34,7 +34,11 @@ use crate::{
 #[derive(Clone)]
 pub struct Handler {
     rb_handler: Opaque<Value>,
-    rb_selector: Opaque<Obj<SelmaSelector>>,
+    // Store the selector's data by value (Rust-owned). The `#selector` method may return a
+    // freshly-built `Selma::Selector` that nothing else on the Ruby side references; keeping a
+    // `Obj`/`Opaque` handle to it would make its lifetime depend on GC (use-after-free if it is
+    // collected while the Rewriter is alive). We only ever read Rust data off it, so clone it.
+    selector: SelmaSelector,
     // total_element_handler_calls: usize,
     // total_elapsed_element_handlers: f64,
 
@@ -126,7 +130,9 @@ impl SelmaRewriter {
                     };
                     let handler = Handler {
                         rb_handler: Opaque::from(rb_handler),
-                        rb_selector: Opaque::from(rb_selector),
+                        // clone the selector's data out of the Ruby object right away so the
+                        // Handler no longer depends on that object surviving GC (see struct docs)
+                        selector: (*rb_selector).clone(),
                         // total_element_handler_calls: 0,
                         // total_elapsed_element_handlers: 0.0,
 
@@ -364,9 +370,7 @@ impl SelmaRewriter {
         handlers.iter().for_each(|handler| {
             let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
 
-            let ruby = Ruby::get().unwrap();
-
-            let selector = ruby.get_inner(handler.rb_selector);
+            let selector = &handler.selector;
 
             // TODO: test final raise by simulating errors
             if selector.match_element().is_some() {

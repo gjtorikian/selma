@@ -130,4 +130,56 @@ class SelmaRewriterTest < Minitest::Test
     rewriter.rewrite(initial_html)
     GC.stress = false
   end
+
+  # Regression tests for GC safety of handler selectors.
+  #
+  # A handler whose #selector returns a *fresh* Selma::Selector on every call (e.g. when the
+  # selector depends on runtime context and can't be a constant) has no other Ruby reference
+  # once the Rewriter takes it. The Rewriter must not depend on that Ruby object surviving GC;
+  # otherwise GC can free it and a later #rewrite reads freed memory (an EmptySelector panic or
+  # a bogus allocation -- a fatal, uncatchable crash).
+  class FreshSelectorRewriter
+    def initialize(css = "a")
+      @css = css
+    end
+
+    # deliberately NOT memoized / not a constant
+    def selector
+      Selma::Selector.new(match_element: @css)
+    end
+
+    def handle_element(element)
+      element["data-touched"] = "1"
+    end
+  end
+
+  # Frees the fresh selector after the Rewriter is built, then reuses the slot, then rewrites.
+  def test_fresh_handler_selector_survives_gc_after_construction
+    rewriter = Selma::Rewriter.new(sanitizer: nil, handlers: [FreshSelectorRewriter.new])
+
+    GC.start(full_mark: true, immediate_sweep: true)
+    1_000_000.times { Object.new } # steady-state allocation to overwrite the freed slot
+
+    # If the selector was collected, this aborts the process instead of returning.
+    result = rewriter.rewrite("<a href='https://example.com'>x</a>")
+
+    assert_includes(result, %(data-touched="1"))
+  end
+
+  # Exercises GC *during* Rewriter construction: building many fresh selectors allocates enough
+  # (under GC.stress) that an earlier, not-yet-protected selector can be collected mid-build.
+  def test_fresh_handler_selectors_survive_gc_during_construction
+    css = ["a", "p", "div", "span", "li", "ul", "ol", "h1", "h2", "h3"]
+    html = "<div><p><a href='https://example.com'>x</a></p></div>"
+
+    GC.stress = true
+    10.times do
+      # many fresh selectors widen the window in which an earlier one can be collected
+      handlers = Array.new(20) { |i| FreshSelectorRewriter.new(css[i % css.size]) }
+      # If a selector is freed mid-construction, this aborts (EmptySelector / try to mark T_NONE).
+      Selma::Rewriter.new(sanitizer: nil, handlers: handlers).rewrite(html)
+    end
+  ensure
+    GC.stress = false
+  end
 end
