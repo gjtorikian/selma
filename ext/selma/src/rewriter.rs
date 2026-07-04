@@ -464,8 +464,7 @@ impl SelmaRewriter {
                 settings = settings.append_element_content_handler(handler);
             }
 
-            let mut rewriter =
-                HtmlRewriter::new(settings, |c: &[u8]| output.extend_from_slice(c));
+            let mut rewriter = HtmlRewriter::new(settings, |c: &[u8]| output.extend_from_slice(c));
             match rewriter.write(html) {
                 Ok(_) => {}
                 Err(err) => {
