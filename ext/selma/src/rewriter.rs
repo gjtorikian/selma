@@ -43,7 +43,8 @@ pub struct Handler {
 }
 
 struct RewriterOptions {
-    memory_options: MemorySettings,
+    max_allowed_memory_usage: usize,
+    preallocated_parsing_buffer_size: usize,
 }
 
 pub struct Rewriter {
@@ -162,7 +163,7 @@ impl SelmaRewriter {
                                 if let Some(max_allowed_memory_usage) = max_allowed_memory_usage {
                                     match max_allowed_memory_usage.to_u64() {
                                         Ok(max_allowed_memory_usage) => {
-                                            rewriter_options.memory_options.max_allowed_memory_usage =
+                                            rewriter_options.max_allowed_memory_usage =
                                                 max_allowed_memory_usage as usize;
                                         }
                                         Err(_e) => {
@@ -173,7 +174,7 @@ impl SelmaRewriter {
                                         }
                                     }
                                 } else {
-                                    rewriter_options.memory_options.max_allowed_memory_usage = MemorySettings::default().max_allowed_memory_usage;
+                                    rewriter_options.max_allowed_memory_usage = RewriterOptions::DEFAULT_MAX_ALLOWED_MEMORY_USAGE;
                                 }
                             }
 
@@ -183,7 +184,7 @@ impl SelmaRewriter {
                                 if let Some(preallocated_parsing_buffer_size) = preallocated_parsing_buffer_size {
                                     match preallocated_parsing_buffer_size.to_u64() {
                                         Ok(preallocated_parsing_buffer_size) => {
-                                            rewriter_options.memory_options.preallocated_parsing_buffer_size =
+                                            rewriter_options.preallocated_parsing_buffer_size =
                                                 preallocated_parsing_buffer_size as usize;
                                         }
                                         Err(_e) => {
@@ -194,7 +195,7 @@ impl SelmaRewriter {
                                         }
                                     }
                                 } else {
-                                    rewriter_options.memory_options.preallocated_parsing_buffer_size = MemorySettings::default().preallocated_parsing_buffer_size;
+                                    rewriter_options.preallocated_parsing_buffer_size = RewriterOptions::DEFAULT_PREALLOCATED_PARSING_BUFFER_SIZE;
                                 }
                             }
                         }
@@ -210,10 +211,8 @@ impl SelmaRewriter {
             }
         }
 
-        if rewriter_options
-            .memory_options
-            .preallocated_parsing_buffer_size
-            > rewriter_options.memory_options.max_allowed_memory_usage
+        if rewriter_options.preallocated_parsing_buffer_size
+            > rewriter_options.max_allowed_memory_usage
         {
             return Err(magnus::Error::new(
                 ruby.exception_arg_error(),
@@ -456,15 +455,17 @@ impl SelmaRewriter {
         let binding = &self.0.borrow();
         let mut output = vec![];
         {
-            let mut rewriter = HtmlRewriter::new(
-                Settings {
-                    document_content_handlers,
-                    element_content_handlers,
-                    memory_settings: Self::get_memory_options(binding),
-                    ..Settings::default()
-                },
-                |c: &[u8]| output.extend_from_slice(c),
-            );
+            let mut settings =
+                Settings::new().with_memory_settings(Self::get_memory_options(binding));
+            for handler in document_content_handlers {
+                settings = settings.append_document_content_handler(handler);
+            }
+            for handler in element_content_handlers {
+                settings = settings.append_element_content_handler(handler);
+            }
+
+            let mut rewriter =
+                HtmlRewriter::new(settings, |c: &[u8]| output.extend_from_slice(c));
             match rewriter.write(html) {
                 Ok(_) => {}
                 Err(err) => {
@@ -561,18 +562,23 @@ impl SelmaRewriter {
     }
 
     fn get_memory_options(binding: &Ref<Rewriter>) -> MemorySettings {
-        let options = &binding.options.memory_options;
-        MemorySettings {
-            max_allowed_memory_usage: options.max_allowed_memory_usage,
-            preallocated_parsing_buffer_size: options.preallocated_parsing_buffer_size,
-        }
+        let options = &binding.options;
+        MemorySettings::new()
+            .with_max_allowed_memory_usage(options.max_allowed_memory_usage)
+            .with_preallocated_parsing_buffer_size(options.preallocated_parsing_buffer_size)
     }
 }
 
 impl RewriterOptions {
+    // Mirrors lol_html's `MemorySettings` defaults, which are no longer exposed as
+    // public fields as of lol_html 3.0 (settings are now consuming builders).
+    const DEFAULT_MAX_ALLOWED_MEMORY_USAGE: usize = usize::MAX;
+    const DEFAULT_PREALLOCATED_PARSING_BUFFER_SIZE: usize = 1024;
+
     pub fn new() -> Self {
         Self {
-            memory_options: MemorySettings::default(),
+            max_allowed_memory_usage: Self::DEFAULT_MAX_ALLOWED_MEMORY_USAGE,
+            preallocated_parsing_buffer_size: Self::DEFAULT_PREALLOCATED_PARSING_BUFFER_SIZE,
         }
     }
 }
