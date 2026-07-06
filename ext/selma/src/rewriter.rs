@@ -373,50 +373,39 @@ impl SelmaRewriter {
             let selector = &handler.selector;
 
             // TODO: test final raise by simulating errors
-            if selector.match_element().is_some() {
+            if let Some(match_element) = selector.match_element() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(element!(
-                    selector.match_element().unwrap(),
-                    move |el| {
-                        match Self::process_element_handlers(
-                            handler,
-                            el,
-                            &closure_element_stack.borrow(),
-                        ) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
-                        }
+                element_content_handlers.push(element!(match_element, move |el| {
+                    match Self::process_element_handlers(
+                        handler,
+                        el,
+                        &closure_element_stack.borrow(),
+                    ) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
                     }
-                ));
+                }));
             }
 
-            if selector.match_text_within().is_some() {
+            if let Some(match_text_within) = selector.match_text_within() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(text!(
-                    selector.match_text_within().unwrap(),
-                    move |text| {
-                        let element_stack = closure_element_stack.as_ref().borrow();
-                        if selector.ignore_text_within().is_some() {
-                            // check if current tag is a tag we should be ignoring text within;
-                            // also checks if tag is within an ancestery of ignored tags
-                            if selector
-                                .ignore_text_within()
-                                .unwrap()
-                                .iter()
-                                .any(|t| element_stack.contains(t))
-                            {
-                                return Ok(());
-                            }
-                        }
-
-                        match Self::process_text_handlers(handler, text) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
+                element_content_handlers.push(text!(match_text_within, move |text| {
+                    let element_stack = closure_element_stack.as_ref().borrow();
+                    // check if current tag is a tag we should be ignoring text within;
+                    // also checks if tag is within an ancestery of ignored tags
+                    if let Some(ignore_text_within) = selector.ignore_text_within() {
+                        if ignore_text_within.iter().any(|t| element_stack.contains(t)) {
+                            return Ok(());
                         }
                     }
-                ));
+
+                    match Self::process_text_handlers(handler, text) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
+                    }
+                }));
             }
 
             // we need to check *every* element we iterate over, to create a stack of elements

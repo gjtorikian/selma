@@ -87,16 +87,16 @@ impl SelmaSelector {
         Ok((match_element, match_text_within, rb_ignore_text_within))
     }
 
-    pub fn match_element(&self) -> Option<String> {
-        self.match_element.clone()
+    pub fn match_element(&self) -> Option<&str> {
+        self.match_element.as_deref()
     }
 
-    pub fn match_text_within(&self) -> Option<String> {
-        self.match_text_within.clone()
+    pub fn match_text_within(&self) -> Option<&str> {
+        self.match_text_within.as_deref()
     }
 
-    pub fn ignore_text_within(&self) -> Option<Vec<String>> {
-        self.ignore_text_within.clone()
+    pub fn ignore_text_within(&self) -> Option<&[String]> {
+        self.ignore_text_within.as_deref()
     }
 }
 
