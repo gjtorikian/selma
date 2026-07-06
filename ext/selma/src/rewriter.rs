@@ -34,7 +34,11 @@ use crate::{
 #[derive(Clone)]
 pub struct Handler {
     rb_handler: Opaque<Value>,
-    rb_selector: Opaque<Obj<SelmaSelector>>,
+    // Store the selector's data by value (Rust-owned). The `#selector` method may return a
+    // freshly-built `Selma::Selector` that nothing else on the Ruby side references; keeping a
+    // `Obj`/`Opaque` handle to it would make its lifetime depend on GC (use-after-free if it is
+    // collected while the Rewriter is alive). We only ever read Rust data off it, so clone it.
+    selector: SelmaSelector,
     // total_element_handler_calls: usize,
     // total_elapsed_element_handlers: f64,
 
@@ -127,7 +131,9 @@ impl SelmaRewriter {
                     };
                     let handler = Handler {
                         rb_handler: Opaque::from(rb_handler),
-                        rb_selector: Opaque::from(rb_selector),
+                        // clone the selector's data out of the Ruby object right away so the
+                        // Handler no longer depends on that object surviving GC (see struct docs)
+                        selector: (*rb_selector).clone(),
                         // total_element_handler_calls: 0,
                         // total_elapsed_element_handlers: 0.0,
 
@@ -363,55 +369,42 @@ impl SelmaRewriter {
         handlers.iter().for_each(|handler| {
             let element_stack: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![]));
 
-            let ruby = Ruby::get().unwrap();
-
-            let selector = ruby.get_inner(handler.rb_selector);
+            let selector = &handler.selector;
 
             // TODO: test final raise by simulating errors
-            if selector.match_element().is_some() {
+            if let Some(match_element) = selector.match_element() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(element!(
-                    selector.match_element().unwrap(),
-                    move |el| {
-                        match Self::process_element_handlers(
-                            handler,
-                            el,
-                            &closure_element_stack.borrow(),
-                        ) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
-                        }
+                element_content_handlers.push(element!(match_element, move |el| {
+                    match Self::process_element_handlers(
+                        handler,
+                        el,
+                        &closure_element_stack.borrow(),
+                    ) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
                     }
-                ));
+                }));
             }
 
-            if selector.match_text_within().is_some() {
+            if let Some(match_text_within) = selector.match_text_within() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(text!(
-                    selector.match_text_within().unwrap(),
-                    move |text| {
-                        let element_stack = closure_element_stack.as_ref().borrow();
-                        if selector.ignore_text_within().is_some() {
-                            // check if current tag is a tag we should be ignoring text within;
-                            // also checks if tag is within an ancestery of ignored tags
-                            if selector
-                                .ignore_text_within()
-                                .unwrap()
-                                .iter()
-                                .any(|t| element_stack.contains(t))
-                            {
-                                return Ok(());
-                            }
-                        }
-
-                        match Self::process_text_handlers(handler, text) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
+                element_content_handlers.push(text!(match_text_within, move |text| {
+                    let element_stack = closure_element_stack.as_ref().borrow();
+                    // check if current tag is a tag we should be ignoring text within;
+                    // also checks if tag is within an ancestery of ignored tags
+                    if let Some(ignore_text_within) = selector.ignore_text_within() {
+                        if ignore_text_within.iter().any(|t| element_stack.contains(t)) {
+                            return Ok(());
                         }
                     }
-                ));
+
+                    match Self::process_text_handlers(handler, text) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.to_string().into()),
+                    }
+                }));
             }
 
             // we need to check *every* element we iterate over, to create a stack of elements
