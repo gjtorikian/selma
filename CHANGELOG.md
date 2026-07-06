@@ -1,3 +1,17 @@
+# [v0.5.1] - 06-07-2026
+## What's Changed
+* Bump rb-sys from 0.9.127 to 0.9.128 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/141
+* Bump lol_html from 2.8.1 to 2.9.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/142
+* feat(element): Expose attribute source locations by @gjtorikian in https://github.com/gjtorikian/selma/pull/143
+* Bump actions/checkout from 6 to 7 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/145
+* Bump actions/cache from 5 to 6 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/146
+* Bump lol_html from 2.9.0 to 3.0.0 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/147
+* Fix GC use-after-free of handler selectors by @fukayatsu in https://github.com/gjtorikian/selma/pull/148
+
+## New Contributors
+* @fukayatsu made their first contribution in https://github.com/gjtorikian/selma/pull/148
+
+**Full Changelog**: https://github.com/gjtorikian/selma/compare/v0.5.0...v0.5.1
 # [v0.5.0] - 03-05-2026
 ## What's Changed
 * Bump lol_html from 2.7.0 to 2.7.1 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/131
