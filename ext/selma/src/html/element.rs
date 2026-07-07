@@ -106,6 +106,28 @@ impl SelmaHTMLElement {
         }
     }
 
+    fn add_attribute(&self, attr: String) -> Result<(), Error> {
+        let mut binding = self.0.borrow_mut();
+        let ruby = Ruby::get().unwrap();
+        if let Ok(element) = binding.element.get_mut() {
+            if element.has_attribute(&attr) {
+                return Ok(());
+            }
+            match element.set_attribute(&attr, "") {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::new(
+                    ruby.exception_runtime_error(),
+                    format!("AttributeNameError: {err:?}"),
+                )),
+            }
+        } else {
+            Err(Error::new(
+                ruby.exception_runtime_error(),
+                "`add_attribute` is not available",
+            ))
+        }
+    }
+
     fn remove_attribute(&self, attr: String) {
         let mut binding = self.0.borrow_mut();
 
@@ -313,6 +335,7 @@ pub fn init(c_html: RClass) -> Result<(), Error> {
     )?;
     c_element.define_method("[]", method!(SelmaHTMLElement::get_attribute, 1))?;
     c_element.define_method("[]=", method!(SelmaHTMLElement::set_attribute, 2))?;
+    c_element.define_method("add_attribute", method!(SelmaHTMLElement::add_attribute, 1))?;
     c_element.define_method(
         "remove_attribute",
         method!(SelmaHTMLElement::remove_attribute, 1),
