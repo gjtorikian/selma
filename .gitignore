@@ -12,6 +12,7 @@
 tmp/
 /vendor/gems
 /vendor/cache
+/vendor/bundle
 Gemfile.lock
 *.log
 ports/
