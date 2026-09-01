@@ -18,9 +18,9 @@ DOCUMENTS = [
   [DOCUMENT_SMALL, "sm"],
   [DOCUMENT_MEDIUM, "md"],
   [DOCUMENT_HUGE, "lg"],
-]
+].freeze
 
-IPS_ARGS = { time: 30, warmup: 10 }
+IPS_ARGS = { time: 30, warmup: 10 }.freeze
 
 def bytes_to_megabytes(bytes)
   (bytes.to_f / 1_000_000).round(2)

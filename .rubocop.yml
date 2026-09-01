@@ -15,3 +15,7 @@ AllCops:
     - "vendor/**/*"
     - "tmp/**/*"
     - "test/progit/**/*"
+
+Lint/MissingSuper:
+  Exclude:
+    - "test/**/*"

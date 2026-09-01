@@ -2,7 +2,6 @@
 
 require "rake/testtask"
 
-require "rake/testtask"
 require "ruby_memcheck"
 
 class ValgrindTestTask < Rake::TestTask

@@ -11,6 +11,8 @@ group :debug do
 end
 
 group :development, :test do
+  gem "rake", "~> 13.0"
+  gem "rake-compiler", "~> 1.2"
   gem "ruby_memcheck"
 end
 

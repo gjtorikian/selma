@@ -229,12 +229,12 @@ class SelmaMaliciousnessTest < Minitest::Test
 
     UNNECESSARY_TAGS = [
       "pre",
-    ]
+    ].freeze
 
     CONTENT_TO_KEEP = [
       "html",
       "body",
-    ]
+    ].freeze
 
     def handle_element(element)
       if UNNECESSARY_TAGS.include?(element.tag_name)

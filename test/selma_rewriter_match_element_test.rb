@@ -78,11 +78,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class GetAncestors < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -103,11 +101,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class GetEmptyAncestors < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -264,11 +260,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class GetIsSelfClosing < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -287,11 +281,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class GetHasAttr < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -310,11 +302,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class RemoveElement < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
@@ -337,11 +327,9 @@ class SelmaRewriterMatchElementTest < Minitest::Test
   class RemoveElementAndKeepContent < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "strong")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR

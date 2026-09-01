@@ -25,11 +25,9 @@ class SelmaRewriterTextTest < Minitest::Test
   class GetTextContent < Minitest::Test
     SELECTOR = Selma::Selector.new(match_text_within: "*")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR

@@ -25,11 +25,9 @@ class SelmaRewriterMatchAttributeTest < Minitest::Test
   class GetAttrs < Minitest::Test
     SELECTOR = Selma::Selector.new(match_element: "div")
 
-    # rubocop:disable Lint/MissingSuper
     def initialize
       @assertions = 0
     end
-    # rubocop:enable Lint/MissingSuper
 
     def selector
       SELECTOR
