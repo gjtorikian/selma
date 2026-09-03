@@ -551,33 +551,18 @@ impl SelmaSanitizer {
             return true;
         }
 
-        // FIXME: is there a more idiomatic way to do this?
-        let mut pos: usize = 0;
-        let mut chars = attr_val.chars();
-        let len = attr_val.len();
+        // The protocol is everything before the first `:`; a `/` or `#` before
+        // that means there is no protocol and the URL is relative.
+        let Some(idx) = attr_val.find([':', '/', '#']) else {
+            return false;
+        };
 
-        for (i, c) in attr_val.chars().enumerate() {
-            if c != ':' && c != '/' && c != '#' && pos + 1 < len {
-                pos = i + 1;
-            } else {
-                break;
-            }
+        match attr_val.as_bytes()[idx] {
+            b'/' => protocols_allowed.contains(&"/".to_string()),
+            b'#' => protocols_allowed.contains(&"#".to_string()),
+            // Allow protocol name to be case-insensitive
+            _ => protocols_allowed.contains(&attr_val[..idx].to_lowercase()),
         }
-
-        let char = chars.nth(pos).unwrap();
-
-        if char == '/' {
-            return protocols_allowed.contains(&"/".to_string());
-        }
-
-        if char == '#' {
-            return protocols_allowed.contains(&"#".to_string());
-        }
-
-        // Allow protocol name to be case-insensitive
-        let protocol = attr_val[0..pos].to_lowercase();
-
-        protocols_allowed.contains(&protocol.to_lowercase())
     }
 
     fn sanitize_class_attribute(

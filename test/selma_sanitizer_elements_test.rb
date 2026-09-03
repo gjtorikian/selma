@@ -252,6 +252,34 @@ module Selma
           assert_equal("<a>Footnote 1</a>", Selma::Rewriter.new(sanitizer: sanitizer).rewrite(input))
         end
 
+        def test_should_handle_non_ascii_urls
+          sanitizer = Selma::Sanitizer.new({
+            elements: ["a"],
+            attributes: { "a" => ["href"] },
+            protocols: { "a" => { "href" => ["http", :relative] } },
+          })
+          rewriter = Selma::Rewriter.new(sanitizer: sanitizer)
+
+          assert_equal("<a>Link</a>", rewriter.rewrite('<a href="café">Link</a>'))
+          assert_equal("<a>Link</a>", rewriter.rewrite('<a href="&nbsp;">Link</a>'))
+          assert_equal("<a>Link</a>", rewriter.rewrite('<a href="café:foo">Link</a>'))
+          assert_equal('<a href="caf%C3%A9/page">Link</a>', rewriter.rewrite('<a href="café/page">Link</a>'))
+          assert_equal('<a href="http://caf%C3%A9.example">Link</a>', rewriter.rewrite('<a href="http://café.example">Link</a>'))
+        end
+
+        def test_should_not_match_protocols_by_prefix
+          sanitizer = Selma::Sanitizer.new({
+            elements: ["a"],
+            attributes: { "a" => ["href"] },
+            protocols: { "a" => { "href" => ["http", :relative] } },
+          })
+          rewriter = Selma::Rewriter.new(sanitizer: sanitizer)
+
+          # a value with no `:`, `/` or `#` used to be compared minus its last character
+          assert_equal("<a>Link</a>", rewriter.rewrite('<a href="httpx">Link</a>'))
+          assert_equal("<a>Link</a>", rewriter.rewrite('<a href="http">Link</a>'))
+        end
+
         def test_should_allow_all_protocols_if_asked
           input = <<~HTML
             <a href="/foo/bar">Link</a>
