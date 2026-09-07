@@ -6,6 +6,8 @@ updates:
       interval: daily
       time: "11:00"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
 
   - package-ecosystem: bundler
     directory: "/"
@@ -14,6 +16,9 @@ updates:
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 
   - package-ecosystem: cargo
     directory: "/"
@@ -22,3 +27,6 @@ updates:
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix"
+      include: "scope"
