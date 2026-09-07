@@ -1,3 +1,16 @@
+## [0.5.2](https://github.com/gjtorikian/selma/compare/v0.5.1...v0.5.2) (2026-09-07)
+
+### Bug Fixes
+
+* panics on non-ASCII attribute values in the protocol check ([#152](https://github.com/gjtorikian/selma/pull/152))
+
+### Miscellaneous Chores
+
+* Use conventional-commit prefixes for dependabot PRs ([3d74e80](https://github.com/gjtorikian/selma/commit/3d74e80cc1faa69df606e21f94536cb52bcfc8c3))
+* Lint PR titles for Conventional Commits ([58c12d6](https://github.com/gjtorikian/selma/commit/58c12d636608c8398eec7fb89daea396a6750700))
+* Run release prep on every push to main ([#153](https://github.com/gjtorikian/selma/pull/153))
+
+
 # [v0.5.1] - 06-07-2026
 ## What's Changed
 * Bump rb-sys from 0.9.127 to 0.9.128 by @dependabot[bot] in https://github.com/gjtorikian/selma/pull/141
