@@ -12,9 +12,9 @@ module Selma
             Selma::Rewriter.new.rewrite('foo <b>bar</b> <strong><a href="#a">baz</a></strong> quux'),
           )
           assert_equal("", Selma::Rewriter.new.rewrite('<script>alert("<xss>");</script>'))
-          assert_equal("", Selma::Rewriter.new.rewrite('<<script>script>alert("<xss>");</<script>>'))
+          assert_equal("&lt;", Selma::Rewriter.new.rewrite('<<script>script>alert("<xss>");</<script>>'))
           assert_equal(
-            '< script <>> alert("");</script>',
+            '&lt; script &lt;>> alert("");</script>',
             Selma::Rewriter.new.rewrite('< script <>> alert("<xss>");</script>'),
           )
         end

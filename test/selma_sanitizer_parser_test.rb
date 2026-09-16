@@ -30,9 +30,9 @@ module Selma
     end
 
     def test_ambiguous_non_tag_brackets_should_be_parsed_correctly
-      assert_equal("1 > 2 and 2 < 1", Selma::Rewriter.new.rewrite("1 > 2 and 2 < 1"))
+      assert_equal("1 > 2 and 2 &lt; 1", Selma::Rewriter.new.rewrite("1 > 2 and 2 < 1"))
 
-      assert_equal("OMG HAPPY BIRTHDAY! *<:-D", Selma::Rewriter.new.rewrite("OMG HAPPY BIRTHDAY! *<:-D"))
+      assert_equal("OMG HAPPY BIRTHDAY! *&lt;:-D", Selma::Rewriter.new.rewrite("OMG HAPPY BIRTHDAY! *<:-D"))
     end
   end
 end

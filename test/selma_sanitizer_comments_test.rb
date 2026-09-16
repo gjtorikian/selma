@@ -53,11 +53,11 @@ module Selma
             "foo <!-- comment --> bar",
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!-- comment --> bar"),
           )
-          assert_equal("foo <!-- ", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!-- "))
-          assert_equal(
-            "foo <!-- - -> bar",
-            Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!-- - -> bar"),
-          )
+          # an unterminated comment is dropped rather than passed through: emitted
+          # verbatim, it would comment out everything after the fragment in the host page
+          assert_equal("foo ", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!-- "))
+          # `- ->` does not close the comment, so this is the same unterminated case
+          assert_equal("foo ", Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!-- - -> bar"))
           assert_equal(
             "foo <!--\n\n\n\n-->bar",
             Selma::Rewriter.new(sanitizer: @sanitizer).rewrite("foo <!--\n\n\n\n-->bar"),

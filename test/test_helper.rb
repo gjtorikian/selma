@@ -62,10 +62,10 @@ STRINGS = {
 
   malicious: {
     html: '<b>Lo<!-- comment -->rem</b> <a href="javascript:pants" title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet <<foo>script>alert("hello world");</script>',
-    default: "Lorem ipsum dolor sit amet ",
-    restricted: "<b>Lorem</b> ipsum <strong>dolor</strong> sit amet ",
-    basic: '<b>Lorem</b> <a>ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet ',
-    relaxed: '<b>Lorem</b> <a title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet ',
+    default: 'Lorem ipsum dolor sit amet &lt;script>alert("hello world");</script>',
+    restricted: '<b>Lorem</b> ipsum <strong>dolor</strong> sit amet &lt;script>alert("hello world");</script>',
+    basic: '<b>Lorem</b> <a>ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet &lt;script>alert("hello world");</script>',
+    relaxed: '<b>Lorem</b> <a title="foo">ipsum</a> <a href="http://foo.com/"><strong>dolor</strong></a> sit<br/>amet &lt;script>alert("hello world");</script>',
   },
 }.freeze
 

@@ -2,7 +2,7 @@ use std::{borrow::BorrowMut, collections::HashMap};
 
 use lol_html::{
     errors::AttributeNameError,
-    html_content::{Comment, ContentType, Doctype, Element, EndTag},
+    html_content::{Comment, ContentType, Doctype, Element, EndTag, TextChunk},
 };
 use magnus::{
     eval, function, method,
@@ -334,6 +334,25 @@ impl SelmaSanitizer {
 
     pub fn get_allow_comments(&self) -> bool {
         self.0.borrow().allow_comments
+    }
+
+    /// A `<` that the tokenizer classified as text (because the character after it
+    /// cannot start a tag, e.g. `<<b>` or `< b`) is otherwise passed through verbatim.
+    /// If the sanitizer then removes the node that follows it, the text on either side
+    /// joins up and re-tokenizes as markup.
+    /// Escaping `<` in every context that decodes entities keeps
+    /// text as text regardless of what gets removed around it. Raw-text contexts
+    /// (`<script>`, `<style>`, ...) are skipped: entities are not decoded there, so
+    /// escaping would corrupt the content rather than protect it.
+    pub fn escape_text_chunk(text_chunk: &mut TextChunk) {
+        if !text_chunk.text_type().allows_html_entities() {
+            return;
+        }
+
+        if text_chunk.as_str().contains('<') {
+            let escaped = text_chunk.as_str().replace('<', "&lt;");
+            text_chunk.set_str(escaped);
+        }
     }
 
     pub fn remove_comment(&self, c: &mut Comment) {
