@@ -7,6 +7,7 @@ pub mod html;
 pub mod native_ref_wrap;
 pub mod rewriter;
 pub mod sanitizer;
+pub mod scan;
 pub mod selector;
 pub mod tags;
 

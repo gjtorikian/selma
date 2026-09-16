@@ -1,8 +1,8 @@
 use lol_html::{
-    doc_comments, doc_text, doctype, element,
+    doc_comments, doc_text, doctype,
     html_content::{Element, TextChunk},
-    text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, MemorySettings, Selector,
-    Settings,
+    DocumentContentHandlers, ElementContentHandlers, HandlerResult, HtmlRewriter, MemorySettings,
+    Selector, Settings,
 };
 use magnus::{
     function, gc, method,
@@ -21,15 +21,33 @@ use std::{
     ops::Deref,
     primitive::str,
     rc::Rc,
+    sync::OnceLock,
 };
 
 use crate::{
     html::{element::SelmaHTMLElement, end_tag::SelmaHTMLEndTag, text_chunk::SelmaHTMLTextChunk},
     native_ref_wrap::NativeRefWrap,
     sanitizer::SelmaSanitizer,
+    scan,
     selector::SelmaSelector,
     tags::Tag,
 };
+
+/// `*`, parsed once per process. lol_html's `element!` macro re-parses its CSS on every
+/// call, which is measurable for rewriters that run on many small inputs.
+fn all_elements_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| "*".parse().expect("`*` is a valid selector"))
+}
+
+fn escapeworthy_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| {
+        Tag::ESCAPEWORTHY_TAGS_CSS
+            .parse()
+            .expect("the escapeworthy tag list is valid CSS")
+    })
+}
 
 #[derive(Clone)]
 pub struct Handler {
@@ -275,7 +293,13 @@ impl SelmaRewriter {
                         Ok(())
                     }));
                 }
-                if !sanitizer.get_allow_comments() {
+                if sanitizer.get_allow_comments() {
+                    // a no-op handler still makes lol_html tokenize comments, so an
+                    // unterminated `<!--`, `<!x` or `<?x` at EOF is dropped just like it is
+                    // when comments are stripped, instead of being flushed raw by the
+                    // tag-scanner fast path (which would comment out the host page)
+                    sanitizer_document_content_handlers.push(doc_comments!(|_c| Ok(())));
+                } else {
                     sanitizer_document_content_handlers.push(doc_comments!(|c| {
                         sanitizer.remove_comment(c);
                         Ok(())
@@ -283,22 +307,29 @@ impl SelmaRewriter {
                 }
                 // this must run in the same pass as element removal: by the time the
                 // output is re-parsed, a literal `<` next to a removed node has already
-                // fused with the text after it (see `SelmaSanitizer::escape_text_chunk`)
-                sanitizer_document_content_handlers.push(doc_text!(|t| {
-                    SelmaSanitizer::escape_text_chunk(t);
-                    Ok(())
-                }));
-                sanitizer_element_content_handlers.push(element!("*", |el| {
-                    sanitizer.try_remove_element(el);
-                    if el.removed() {
-                        return Ok(());
-                    }
-                    // if it was removed, there are no attributes to sanitize
-                    match sanitizer.sanitize_attributes(el) {
-                        Ok(_) => Ok(()),
-                        Err(err) => Err(err.to_string().into()),
-                    }
-                }));
+                // fused with the text after it (see `SelmaSanitizer::escape_text_chunk`).
+                // Registering a text handler makes lol_html materialize every text chunk,
+                // so only pay for it when the input has a `<` that can end up in text.
+                if scan::has_escapable_lt(html.as_bytes()) {
+                    sanitizer_document_content_handlers.push(doc_text!(|t| {
+                        SelmaSanitizer::escape_text_chunk(t);
+                        Ok(())
+                    }));
+                }
+                sanitizer_element_content_handlers.push(Self::element_handler(
+                    all_elements_selector(),
+                    |el| {
+                        sanitizer.try_remove_element(el);
+                        if el.removed() {
+                            return Ok(());
+                        }
+                        // if it was removed, there are no attributes to sanitize
+                        match sanitizer.sanitize_attributes(el) {
+                            Ok(_) => Ok(()),
+                            Err(err) => Err(err.to_string().into()),
+                        }
+                    },
+                ));
             }
         };
 
@@ -312,13 +343,7 @@ impl SelmaRewriter {
             html,
         ) {
             Ok(rewritten_html) => match &binding.sanitizer {
-                None => match String::from_utf8(rewritten_html) {
-                    Ok(output) => Ok(output),
-                    Err(err) => Err(magnus::Error::new(
-                        Ruby::get().unwrap().exception_runtime_error(),
-                        format!("{err:?}"),
-                    )),
-                },
+                None => Self::utf8(rewritten_html),
                 Some(sanitizer) => {
                     Self::perform_final_sanitization(self, sanitizer, rewritten_html)
                 }
@@ -334,30 +359,55 @@ impl SelmaRewriter {
         sanitizer: &SelmaSanitizer,
         html: Vec<u8>,
     ) -> Result<String, magnus::Error> {
-        // TODO: this should ideally be done ahead of time on `initialize`, not on every `#rewrite` call
-        let mut element_content_handlers: Vec<(Cow<Selector>, ElementContentHandlers)> = vec![];
-
-        if sanitizer.get_escape_tagfilter() {
-            element_content_handlers.push(element!(Tag::ESCAPEWORTHY_TAGS_CSS, |el| {
-                let should_remove = sanitizer.allow_element(el);
-                if should_remove {
-                    sanitizer.force_remove_element(el);
-                }
-
-                Ok(())
-            }));
+        // the only handler in this pass matches a fixed list of tag names, so a full
+        // re-parse is pointless unless the output can actually contain one of them
+        if !sanitizer.get_escape_tagfilter()
+            || !scan::has_start_tag(&html, Tag::ESCAPEWORTHY_TAG_NAMES)
+        {
+            return Self::utf8(html);
         }
 
-        match Self::run_rewrite(self, vec![], element_content_handlers, html.as_slice()) {
-            Ok(rewritten_html) => match String::from_utf8(rewritten_html) {
-                Ok(output) => Ok(output),
-                Err(err) => Err(magnus::Error::new(
-                    Ruby::get().unwrap().exception_runtime_error(),
-                    format!("{err:?}"),
-                )),
-            },
-            Err(err) => Err(err),
-        }
+        let element_content_handlers = vec![Self::element_handler(escapeworthy_selector(), |el| {
+            let should_remove = sanitizer.allow_element(el);
+            if should_remove {
+                sanitizer.force_remove_element(el);
+            }
+
+            Ok(())
+        })];
+
+        Self::run_rewrite(self, vec![], element_content_handlers, html.as_slice())
+            .and_then(Self::utf8)
+    }
+
+    /// Pairs a pre-parsed selector with an element handler; see `all_elements_selector`.
+    fn element_handler<'h>(
+        selector: &'h Selector,
+        handler: impl FnMut(&mut Element<'_, '_>) -> HandlerResult + 'h,
+    ) -> (Cow<'h, Selector>, ElementContentHandlers<'h>) {
+        (
+            Cow::Borrowed(selector),
+            ElementContentHandlers::default().element(handler),
+        )
+    }
+
+    fn text_handler<'h>(
+        selector: &'h Selector,
+        handler: impl FnMut(&mut TextChunk<'_>) -> HandlerResult + 'h,
+    ) -> (Cow<'h, Selector>, ElementContentHandlers<'h>) {
+        (
+            Cow::Borrowed(selector),
+            ElementContentHandlers::default().text(handler),
+        )
+    }
+
+    fn utf8(html: Vec<u8>) -> Result<String, magnus::Error> {
+        String::from_utf8(html).map_err(|err| {
+            magnus::Error::new(
+                Ruby::get().unwrap().exception_runtime_error(),
+                format!("{err:?}"),
+            )
+        })
     }
 
     pub fn perform_handler_rewrite<'a>(
@@ -379,10 +429,10 @@ impl SelmaRewriter {
             let selector = &handler.selector;
 
             // TODO: test final raise by simulating errors
-            if let Some(match_element) = selector.match_element() {
+            if let Some(match_element) = selector.element_selector() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(element!(match_element, move |el| {
+                element_content_handlers.push(Self::element_handler(match_element, move |el| {
                     match Self::process_element_handlers(
                         handler,
                         el,
@@ -394,10 +444,10 @@ impl SelmaRewriter {
                 }));
             }
 
-            if let Some(match_text_within) = selector.match_text_within() {
+            if let Some(match_text_within) = selector.text_selector() {
                 let closure_element_stack = element_stack.clone();
 
-                element_content_handlers.push(text!(match_text_within, move |text| {
+                element_content_handlers.push(Self::text_handler(match_text_within, move |text| {
                     let element_stack = closure_element_stack.as_ref().borrow();
                     // check if current tag is a tag we should be ignoring text within;
                     // also checks if tag is within an ancestery of ignored tags
@@ -415,27 +465,31 @@ impl SelmaRewriter {
             }
 
             // we need to check *every* element we iterate over, to create a stack of elements
-            element_content_handlers.push(element!("*", move |el| {
-                let tag_name = el.tag_name().to_lowercase();
+            element_content_handlers.push(Self::element_handler(
+                all_elements_selector(),
+                move |el| {
+                    // lol_html already lowercases the name
+                    let tag_name = el.tag_name();
 
-                // no need to track self-closing tags
-                if Tag::tag_from_tag_name(&tag_name).self_closing {
-                    return Ok(());
-                };
+                    // no need to track self-closing tags
+                    if Tag::tag_from_tag_name(&tag_name).self_closing {
+                        return Ok(());
+                    };
 
-                element_stack.as_ref().borrow_mut().push(tag_name);
+                    element_stack.as_ref().borrow_mut().push(tag_name);
 
-                let closure_element_stack = element_stack.clone();
+                    let closure_element_stack = element_stack.clone();
 
-                let handler: lol_html::EndTagHandler<'static> = Box::new(move |_end_tag| {
-                    closure_element_stack.as_ref().borrow_mut().pop();
+                    let handler: lol_html::EndTagHandler<'static> = Box::new(move |_end_tag| {
+                        closure_element_stack.as_ref().borrow_mut().pop();
+                        Ok(())
+                    });
+                    // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
+                    let _ = el.on_end_tag(handler);
+
                     Ok(())
-                });
-                // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
-                let _ = el.on_end_tag(handler);
-
-                Ok(())
-            }));
+                },
+            ));
         });
 
         Self::run_rewrite(

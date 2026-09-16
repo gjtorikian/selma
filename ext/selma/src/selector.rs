@@ -3,8 +3,9 @@ use magnus::{function, scan_args, Error, Module, Object, RModule, Ruby, Value};
 #[derive(Clone, Debug)]
 #[magnus::wrap(class = "Selma::Selector")]
 pub struct SelmaSelector {
-    match_element: Option<String>,
-    match_text_within: Option<String>,
+    // parsed once here, so `Rewriter#rewrite` does not re-parse the CSS on every call
+    element_selector: Option<lol_html::Selector>,
+    text_selector: Option<lol_html::Selector>,
     ignore_text_within: Option<Vec<String>>,
 }
 
@@ -23,25 +24,31 @@ impl SelmaSelector {
             ));
         }
 
-        // FIXME: not excited about this double parse work (`element!` does it too),
-        // but at least we can bail ASAP if the CSS is invalid
-        if let Some(css) = &match_element {
-            if css.parse::<lol_html::Selector>().is_err() {
-                return Err(Error::new(
-                    ruby.exception_arg_error(),
-                    format!("Could not parse `match_element` (`{css:?}`) as valid CSS"),
-                ));
-            }
-        }
+        let element_selector = match &match_element {
+            None => None,
+            Some(css) => match css.parse::<lol_html::Selector>() {
+                Ok(selector) => Some(selector),
+                Err(_) => {
+                    return Err(Error::new(
+                        ruby.exception_arg_error(),
+                        format!("Could not parse `match_element` (`{css:?}`) as valid CSS"),
+                    ));
+                }
+            },
+        };
 
-        if let Some(css) = &match_text_within {
-            if css.parse::<lol_html::Selector>().is_err() {
-                return Err(Error::new(
-                    ruby.exception_arg_error(),
-                    format!("Could not parse `match_text_within` (`{css:?}`) as valid CSS",),
-                ));
-            }
-        }
+        let text_selector = match &match_text_within {
+            None => None,
+            Some(css) => match css.parse::<lol_html::Selector>() {
+                Ok(selector) => Some(selector),
+                Err(_) => {
+                    return Err(Error::new(
+                        ruby.exception_arg_error(),
+                        format!("Could not parse `match_text_within` (`{css:?}`) as valid CSS"),
+                    ));
+                }
+            },
+        };
 
         let ignore_text_within = match rb_ignore_text_within {
             None => None,
@@ -57,8 +64,8 @@ impl SelmaSelector {
         };
 
         Ok(Self {
-            match_element,
-            match_text_within,
+            element_selector,
+            text_selector,
             ignore_text_within,
         })
     }
@@ -87,12 +94,12 @@ impl SelmaSelector {
         Ok((match_element, match_text_within, rb_ignore_text_within))
     }
 
-    pub fn match_element(&self) -> Option<&str> {
-        self.match_element.as_deref()
+    pub fn element_selector(&self) -> Option<&lol_html::Selector> {
+        self.element_selector.as_ref()
     }
 
-    pub fn match_text_within(&self) -> Option<&str> {
-        self.match_text_within.as_deref()
+    pub fn text_selector(&self) -> Option<&lol_html::Selector> {
+        self.text_selector.as_ref()
     }
 
     pub fn ignore_text_within(&self) -> Option<&[String]> {
