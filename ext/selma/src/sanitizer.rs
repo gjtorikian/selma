@@ -339,8 +339,8 @@ impl SelmaSanitizer {
     /// A `<` that the tokenizer classified as text (because the character after it
     /// cannot start a tag, e.g. `<<b>` or `< b`) is otherwise passed through verbatim.
     /// If the sanitizer then removes the node that follows it, the text on either side
-    /// joins up and re-tokenizes as markup in the browser (mutation XSS,
-    /// GHSA-4xw4-3jxj-c23p). Escaping `<` in every context that decodes entities keeps
+    /// joins up and re-tokenizes as markup.
+    /// Escaping `<` in every context that decodes entities keeps
     /// text as text regardless of what gets removed around it. Raw-text contexts
     /// (`<script>`, `<style>`, ...) are skipped: entities are not decoded there, so
     /// escaping would corrupt the content rather than protect it.
