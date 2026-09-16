@@ -227,7 +227,6 @@ impl Tag {
     }
 
     pub fn tag_from_element(element: &mut Element) -> Tag {
-        // lol_html already lowercases the name; no need to allocate a second copy
         Self::tag_from_tag_name(&element.tag_name())
     }
 
