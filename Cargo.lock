@@ -508,6 +508,7 @@ dependencies = [
  "escapist",
  "lol_html",
  "magnus",
+ "memchr",
  "rb-sys",
 ]
 

@@ -13,6 +13,7 @@ rb-sys = { version = "*", default-features = false, features = [
     "stable-api-compiled-fallback",
 ] }
 lol_html = "3.0"
+memchr = "2"
 
 [lib]
 name = "selma"

@@ -208,12 +208,26 @@ impl Tag {
     pub const ESCAPEWORTHY_TAGS_CSS: &'static str =
         "title, textarea, style, xmp, iframe, noembed, noframes, script, plaintext";
 
+    /// Byte-level twin of [`Self::ESCAPEWORTHY_TAGS_CSS`], used to decide whether the
+    /// final sanitization pass has anything to do before paying for a full re-parse.
+    pub const ESCAPEWORTHY_TAG_NAMES: &'static [&'static [u8]] = &[
+        b"title",
+        b"textarea",
+        b"style",
+        b"xmp",
+        b"iframe",
+        b"noembed",
+        b"noframes",
+        b"script",
+        b"plaintext",
+    ];
+
     pub fn html_tags() -> Vec<HTMLTag> {
         all::<HTMLTag>().collect::<Vec<_>>()
     }
 
     pub fn tag_from_element(element: &mut Element) -> Tag {
-        Self::tag_from_tag_name(element.tag_name().to_lowercase().as_str())
+        Self::tag_from_tag_name(&element.tag_name())
     }
 
     pub fn tag_from_tag_name(tag_name: &str) -> Tag {
