@@ -319,15 +319,9 @@ impl SelmaRewriter {
                 sanitizer_element_content_handlers.push(Self::element_handler(
                     all_elements_selector(),
                     |el| {
-                        sanitizer.try_remove_element(el);
-                        if el.removed() {
-                            return Ok(());
-                        }
-                        // if it was removed, there are no attributes to sanitize
-                        match sanitizer.sanitize_attributes(el) {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(err.to_string().into()),
-                        }
+                        sanitizer
+                            .sanitize_element(el)
+                            .map_err(|err| err.to_string().into())
                     },
                 ));
             }
@@ -368,10 +362,7 @@ impl SelmaRewriter {
         }
 
         let element_content_handlers = vec![Self::element_handler(escapeworthy_selector(), |el| {
-            let should_remove = sanitizer.allow_element(el);
-            if should_remove {
-                sanitizer.force_remove_element(el);
-            }
+            sanitizer.remove_if_disallowed(el);
 
             Ok(())
         })];

@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, sync::OnceLock};
 
 use lol_html::{
     errors::AttributeNameError,
@@ -15,9 +15,17 @@ use magnus::{
 #[derive(Clone, Debug, Default)]
 struct ElementSanitizer {
     allowed_attrs: Vec<String>,
-    required_attrs: Vec<String>,
     allowed_classes: Vec<String>,
     protocol_sanitizers: HashMap<String, Vec<String>>,
+}
+
+impl ElementSanitizer {
+    /// Shared stand-in for elements the config never mentions, so lookups at rewrite
+    /// time never insert anything and the config stays immutable once built.
+    fn empty() -> &'static ElementSanitizer {
+        static EMPTY: OnceLock<ElementSanitizer> = OnceLock::new();
+        EMPTY.get_or_init(ElementSanitizer::default)
+    }
 }
 
 #[derive(Clone)]
@@ -33,9 +41,11 @@ pub struct Sanitizer {
     config: Opaque<RHash>,
 }
 
+/// The config is fully built in `new` and never changes afterwards, so there is no
+/// interior mutability here: every rewrite-time method only reads.
 #[derive(Clone)]
 #[magnus::wrap(class = "Selma::Sanitizer")]
-pub struct SelmaSanitizer(std::cell::RefCell<Sanitizer>);
+pub struct SelmaSanitizer(Sanitizer);
 
 impl SelmaSanitizer {
     const SELMA_SANITIZER_ALLOW: u8 = (1 << 0);
@@ -65,15 +75,9 @@ impl SelmaSanitizer {
             }
         };
 
+        // only elements the config actually mentions get an entry; everything else
+        // resolves to `ElementSanitizer::empty()` at rewrite time
         let mut element_sanitizers = HashMap::new();
-
-        // TODO: set up default tags; do we need this?
-        crate::tags::Tag::html_tags().iter().for_each(|html_tag| {
-            let element_name = crate::tags::Tag::element_name_from_enum(html_tag).to_string();
-
-            let element_sanitizer = ElementSanitizer::default();
-            element_sanitizers.insert(element_name, element_sanitizer);
-        });
 
         // def allow_attribute(element, attrs)
         //   attrs.flatten.each { |attr| set_allowed_attribute(element, attr, true) }
@@ -172,7 +176,7 @@ impl SelmaSanitizer {
             None => true,
         };
 
-        Ok(Self(std::cell::RefCell::new(Sanitizer {
+        Ok(Self(Sanitizer {
             flags,
             allowed_attrs: sanitizer_allowed_attrs,
             allowed_classes: sanitizer_allowed_classes,
@@ -182,7 +186,7 @@ impl SelmaSanitizer {
             allow_comments,
             allow_doctype,
             config: config.into(),
-        })))
+        }))
     }
 
     fn setup_config(
@@ -276,10 +280,9 @@ impl SelmaSanitizer {
     }
 
     fn get_config(&self) -> Result<RHash, magnus::Error> {
-        let binding = self.0.borrow();
         let ruby = Ruby::get().unwrap();
 
-        Ok(ruby.get_inner(binding.config))
+        Ok(ruby.get_inner(self.0.config))
     }
 
     /// Toggle a sanitizer option on or off.
@@ -317,7 +320,7 @@ impl SelmaSanitizer {
     }
 
     pub fn escape_tagfilter(&self, e: &mut Element) -> bool {
-        if self.0.borrow().escape_tagfilter {
+        if self.0.escape_tagfilter {
             let tag = crate::tags::Tag::tag_from_element(e);
             if crate::tags::Tag::is_tag_escapeworthy(tag) {
                 e.remove();
@@ -329,11 +332,11 @@ impl SelmaSanitizer {
     }
 
     pub fn get_escape_tagfilter(&self) -> bool {
-        self.0.borrow().escape_tagfilter
+        self.0.escape_tagfilter
     }
 
     pub fn get_allow_comments(&self) -> bool {
-        self.0.borrow().allow_comments
+        self.0.allow_comments
     }
 
     /// A `<` that the tokenizer classified as text (because the character after it
@@ -361,7 +364,7 @@ impl SelmaSanitizer {
 
     /// Whether or not to keep HTML doctype.
     pub fn get_allow_doctype(&self) -> bool {
-        self.0.borrow().allow_doctype
+        self.0.allow_doctype
     }
 
     pub fn remove_doctype(&self, d: &mut Doctype) {
@@ -374,7 +377,7 @@ impl SelmaSanitizer {
         allow_list: RArray,
     ) {
         let ruby = Ruby::get().unwrap();
-        let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers.borrow_mut();
+        let protocol_sanitizers = &mut element_sanitizer.protocol_sanitizers;
 
         for allowed_protocol in allow_list.into_iter() {
             let protocol_list = protocol_sanitizers.get_mut(&attr_name);
@@ -416,92 +419,95 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn sanitize_attributes(&self, element: &mut Element) -> Result<(), AttributeNameError> {
-        let tag = crate::tags::Tag::tag_from_element(element);
-        let tag_name = &element.tag_name();
-        let element_sanitizer = {
-            let mut binding = self.0.borrow_mut();
-            let element_sanitizers = &mut binding.element_sanitizers;
-            Self::get_element_sanitizer(element_sanitizers, tag_name).clone()
-        };
+    /// Everything the sanitizer does to one element, with a single tag lookup: remove it
+    /// (and, depending on the config, its contents) when it is not allowed, otherwise
+    /// filter and re-escape its attributes.
+    pub fn sanitize_element(&self, element: &mut Element) -> Result<(), AttributeNameError> {
+        // `tag_name()` allocates, so take it once and derive everything else from it
+        let name = element.tag_name();
+        let tag = crate::tags::Tag::tag_from_tag_name(&name);
 
-        let binding = self.0.borrow();
+        self.try_remove_element(element, tag);
+        if element.removed() {
+            // nothing left to sanitize
+            return Ok(());
+        }
 
-        // FIXME: This is a hack to get around the fact that we can't borrow
-        let attribute_map: HashMap<String, String> = element
+        self.sanitize_attributes(element, tag, &name)
+    }
+
+    fn sanitize_attributes(
+        &self,
+        element: &mut Element,
+        tag: crate::tags::Tag,
+        tag_name: &str,
+    ) -> Result<(), AttributeNameError> {
+        let sanitizer = &self.0;
+        let element_sanitizer = sanitizer
+            .element_sanitizers
+            .get(tag_name)
+            .unwrap_or_else(|| ElementSanitizer::empty());
+
+        // the attribute list cannot be iterated while the element is being mutated, so
+        // take a snapshot. Every occurrence of a duplicated name is evaluated in order;
+        // a rejected occurrence removes the attribute outright.
+        let attributes: Vec<(String, String)> = element
             .attributes()
             .iter()
             .map(|a| (a.name(), a.value()))
             .collect();
 
-        for (attr_name, attr_val) in attribute_map.iter() {
+        for (attr_name, attr_val) in &attributes {
             // you can actually embed <!-- ... --> inside
             // an HTML tag to pass malicious data. If this is
             // encountered, remove the entire element to be safe.
             if attr_name.starts_with("<!--") {
-                Self::force_remove_element(self, element);
+                Self::force_remove_element(element, tag);
                 return Ok(());
             }
 
-            // first, trim leading spaces and unescape any encodings
+            // first, trim leading spaces and unescape any encodings (an entity always
+            // starts with `&`, so a value without one is already unescaped)
             let trimmed = attr_val.trim_start();
-            let x = escapist::unescape_html(trimmed.as_bytes());
-            let unescaped_attr_val = String::from_utf8_lossy(&x).to_string();
-
-            let should_keep_attrubute = match Self::should_keep_attribute(
-                &binding,
-                element,
-                &element_sanitizer,
-                attr_name,
-                &unescaped_attr_val,
-            ) {
-                Ok(should_keep) => should_keep,
-                Err(e) => {
-                    return Err(e);
-                }
+            let unescaped_attr_val: Cow<str> = if trimmed.contains('&') {
+                let bytes = escapist::unescape_html(trimmed.as_bytes());
+                Cow::Owned(
+                    String::from_utf8(bytes)
+                        .unwrap_or_else(|err| String::from_utf8_lossy(err.as_bytes()).into_owned()),
+                )
+            } else {
+                Cow::Borrowed(trimmed)
             };
 
-            if !should_keep_attrubute {
+            let keep = Self::should_keep_attribute(
+                sanitizer,
+                element,
+                element_sanitizer,
+                attr_name,
+                &unescaped_attr_val,
+            )?;
+
+            if !keep {
                 element.remove_attribute(attr_name);
-            } else {
-                // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
-                // since output is always UTF-8.
-                if crate::tags::Tag::is_meta(tag) {
-                    if attr_name == "charset" && unescaped_attr_val != "utf-8" {
-                        match element.set_attribute(attr_name, "utf-8") {
-                            Ok(_) => {}
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    }
-                } else if !unescaped_attr_val.is_empty() {
-                    let mut buf = String::new();
-                    // ...then, escape any special characters, for security
-                    if attr_name == "href" {
-                        escapist::escape_href(&mut buf, unescaped_attr_val.as_str()).unwrap();
-                    } else {
-                        escapist::escape_html(&mut buf, unescaped_attr_val.as_str()).unwrap();
-                    };
-
-                    match element.set_attribute(attr_name, &buf) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            return Err(err);
-                        }
-                    }
-                }
+                continue;
             }
-        }
 
-        let required = &element_sanitizer.required_attrs;
-        if required.contains(&"*".to_string()) {
-            return Ok(());
-        }
-        for attr in element.attributes().iter() {
-            let attr_name = &attr.name();
-            if required.contains(attr_name) {
-                return Ok(());
+            // Prevent the use of `<meta>` elements that set a charset other than UTF-8,
+            // since output is always UTF-8.
+            if crate::tags::Tag::is_meta(tag) {
+                if attr_name == "charset" && unescaped_attr_val != "utf-8" {
+                    element.set_attribute(attr_name, "utf-8")?;
+                }
+            } else if !unescaped_attr_val.is_empty() {
+                // ...then, escape any special characters, for security
+                let mut buf = String::with_capacity(unescaped_attr_val.len());
+                if attr_name == "href" {
+                    escapist::escape_href(&mut buf, &unescaped_attr_val).unwrap();
+                } else {
+                    escapist::escape_html(&mut buf, &unescaped_attr_val).unwrap();
+                };
+
+                element.set_attribute(attr_name, &buf)?;
             }
         }
 
@@ -512,12 +518,15 @@ impl SelmaSanitizer {
         binding: &Sanitizer,
         element: &mut Element,
         element_sanitizer: &ElementSanitizer,
-        attr_name: &String,
+        attr_name: &str,
         attr_val: &str,
     ) -> Result<bool, AttributeNameError> {
         let mut allowed: bool = false;
-        let element_allowed_attrs = element_sanitizer.allowed_attrs.contains(attr_name);
-        let sanitizer_allowed_attrs = binding.allowed_attrs.contains(attr_name);
+        let element_allowed_attrs = element_sanitizer
+            .allowed_attrs
+            .iter()
+            .any(|a| a == attr_name);
+        let sanitizer_allowed_attrs = binding.allowed_attrs.iter().any(|a| a == attr_name);
 
         if element_allowed_attrs {
             allowed = true;
@@ -566,7 +575,7 @@ impl SelmaSanitizer {
     }
 
     fn has_allowed_protocol(protocols_allowed: &[String], attr_val: &str) -> bool {
-        if protocols_allowed.contains(&"all".to_string()) {
+        if protocols_allowed.iter().any(|p| p == "all") {
             return true;
         }
 
@@ -577,10 +586,18 @@ impl SelmaSanitizer {
         };
 
         match attr_val.as_bytes()[idx] {
-            b'/' => protocols_allowed.contains(&"/".to_string()),
-            b'#' => protocols_allowed.contains(&"#".to_string()),
-            // Allow protocol name to be case-insensitive
-            _ => protocols_allowed.contains(&attr_val[..idx].to_lowercase()),
+            b'/' => protocols_allowed.iter().any(|p| p == "/"),
+            b'#' => protocols_allowed.iter().any(|p| p == "#"),
+            // Allow protocol name to be case-insensitive (the config side is taken as-is)
+            _ => {
+                let protocol = &attr_val.as_bytes()[..idx];
+                protocols_allowed.iter().any(|p| {
+                    p.len() == protocol.len()
+                        && p.bytes()
+                            .zip(protocol)
+                            .all(|(allowed, given)| allowed == given.to_ascii_lowercase())
+                })
+            }
         }
     }
 
@@ -593,8 +610,6 @@ impl SelmaSanitizer {
     ) -> Result<bool, lol_html::errors::AttributeNameError> {
         let allowed_global = &binding.allowed_classes;
 
-        let mut valid_classes: Vec<String> = vec![];
-
         let allowed_local = &element_sanitizer.allowed_classes;
 
         // No class filters, so everything goes through
@@ -602,15 +617,13 @@ impl SelmaSanitizer {
             return Ok(true);
         }
 
-        let attr_value = attr_val.trim_start();
-        attr_value
+        let valid_classes: Vec<&str> = attr_val
             .split_whitespace()
-            .map(|s| s.to_string())
-            .for_each(|class| {
-                if allowed_global.contains(&class) || allowed_local.contains(&class) {
-                    valid_classes.push(class);
-                }
-            });
+            .filter(|class| {
+                allowed_global.iter().any(|a| a == class)
+                    || allowed_local.iter().any(|a| a == class)
+            })
+            .collect();
 
         if valid_classes.is_empty() {
             return Ok(false);
@@ -622,18 +635,23 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn allow_element(&self, element: &mut Element) -> bool {
-        let tag = crate::tags::Tag::tag_from_element(element);
-        let flags: u8 = self.0.borrow().flags[tag.index];
-
-        (flags & Self::SELMA_SANITIZER_ALLOW) == 0
+    fn is_disallowed(&self, tag: crate::tags::Tag) -> bool {
+        (self.0.flags[tag.index] & Self::SELMA_SANITIZER_ALLOW) == 0
     }
 
-    pub fn try_remove_element(&self, element: &mut Element) -> bool {
+    /// The final pass only needs to know whether a (possibly handler-inserted or fused)
+    /// element from the tagfilter list is allowed, and remove it outright if not.
+    pub fn remove_if_disallowed(&self, element: &mut Element) {
         let tag = crate::tags::Tag::tag_from_element(element);
-        let flags: u8 = self.0.borrow().flags[tag.index];
+        if self.is_disallowed(tag) {
+            Self::force_remove_element(element, tag);
+        }
+    }
 
-        let should_remove = !element.removed() && self.allow_element(element);
+    fn try_remove_element(&self, element: &mut Element, tag: crate::tags::Tag) -> bool {
+        let flags: u8 = self.0.flags[tag.index];
+
+        let should_remove = !element.removed() && self.is_disallowed(tag);
 
         if should_remove {
             if crate::tags::Tag::has_text_content(tag) {
@@ -646,11 +664,11 @@ impl SelmaSanitizer {
                 Self::remove_element(element, tag.self_closing, flags);
             }
 
-            Self::check_if_end_tag_needs_removal(element);
+            Self::check_if_end_tag_needs_removal(element, tag);
         } else {
             // anything in <iframe> must be removed, if it's kept
             if crate::tags::Tag::is_iframe(tag) {
-                if self.0.borrow().flags[tag.index] != 0 {
+                if flags != 0 {
                     element.set_inner_content(" ", ContentType::Text);
                 } else {
                     element.set_inner_content("", ContentType::Text);
@@ -681,15 +699,17 @@ impl SelmaSanitizer {
         }
     }
 
-    pub fn force_remove_element(&self, element: &mut Element) {
-        let tag = crate::tags::Tag::tag_from_element(element);
-        let self_closing = tag.self_closing;
-        Self::remove_element(element, self_closing, Self::SELMA_SANITIZER_REMOVE_CONTENTS);
-        Self::check_if_end_tag_needs_removal(element);
+    fn force_remove_element(element: &mut Element, tag: crate::tags::Tag) {
+        Self::remove_element(
+            element,
+            tag.self_closing,
+            Self::SELMA_SANITIZER_REMOVE_CONTENTS,
+        );
+        Self::check_if_end_tag_needs_removal(element, tag);
     }
 
-    fn check_if_end_tag_needs_removal(element: &mut Element) {
-        if element.removed() && !crate::tags::Tag::tag_from_element(element).self_closing {
+    fn check_if_end_tag_needs_removal(element: &mut Element, tag: crate::tags::Tag) {
+        if element.removed() && !tag.self_closing {
             // ignore void elements (lol_html's void list may differ from selma's `self_closing`)
             let _ = element.on_end_tag(Box::new(move |end| {
                 Self::remove_end_tag(end);
