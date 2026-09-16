@@ -1,3 +1,19 @@
+## [0.5.3](https://github.com/gjtorikian/selma/compare/v0.5.2...v0.5.3) (2026-09-16)
+
+### Bug Fixes
+
+* escape literal < in text to prevent mutation XSS ([#155](https://github.com/gjtorikian/selma/pull/155))
+
+### Performance Improvements
+
+* drop the sanitizer's RefCell and per-element allocations ([#158](https://github.com/gjtorikian/selma/pull/158))
+* skip idle sanitizer passes and re-parsed selectors ([#157](https://github.com/gjtorikian/selma/pull/157))
+
+### Miscellaneous Chores
+
+* Publish musl native gems on release ([b5a3391](https://github.com/gjtorikian/selma/commit/b5a33919e41c9bd9a5cc7bff9735a3a0a49d4ff2))
+
+
 ## [0.5.2](https://github.com/gjtorikian/selma/compare/v0.5.1...v0.5.2) (2026-09-07)
 
 ### Bug Fixes
