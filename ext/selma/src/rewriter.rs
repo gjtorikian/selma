@@ -1,5 +1,5 @@
 use lol_html::{
-    doc_comments, doctype, element,
+    doc_comments, doc_text, doctype, element,
     html_content::{Element, TextChunk},
     text, DocumentContentHandlers, ElementContentHandlers, HtmlRewriter, MemorySettings, Selector,
     Settings,
@@ -281,6 +281,13 @@ impl SelmaRewriter {
                         Ok(())
                     }));
                 }
+                // this must run in the same pass as element removal: by the time the
+                // output is re-parsed, a literal `<` next to a removed node has already
+                // fused with the text after it (see `SelmaSanitizer::escape_text_chunk`)
+                sanitizer_document_content_handlers.push(doc_text!(|t| {
+                    SelmaSanitizer::escape_text_chunk(t);
+                    Ok(())
+                }));
                 sanitizer_element_content_handlers.push(element!("*", |el| {
                     sanitizer.try_remove_element(el);
                     if el.removed() {
@@ -467,6 +474,10 @@ impl SelmaRewriter {
                     ));
                 }
             }
+            // deliberately no `rewriter.end()`: lol_html would flush whatever token it is
+            // still holding at EOF *verbatim*, which turns a half-open `<img src=x onerror=..`
+            // into live markup once the fragment is embedded in a page; dropping an
+            // unterminated trailing token is the safe choice for a sanitizer
         }
         Ok(output)
     }

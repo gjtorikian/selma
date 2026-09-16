@@ -201,6 +201,10 @@ The structure of the `memory` options looks like this:
 
 Note that `preallocated_parsing_buffer_size` must always be less than `max_allowed_memory_usage`. See [the`lol_html` project documentation](https://docs.rs/lol_html/1.2.1/lol_html/struct.MemorySettings.html) to learn more about the default values.
 
+### Literal `<` in text is always escaped
+
+Whenever a sanitizer is in use, a literal `<` in text is emitted as `&lt;`. That includes `<textarea>` and `<title>`, where entities are still decoded, but not raw-text elements such as `<style>`, where they are not. This is what stops a stray `<` from fusing with the text after it into a brand new tag once the sanitizer removes whatever sat in between, e.g. `<<script></script>img src=x onerror=alert(1)>`. Your own `handle_text_chunk` handlers still receive the original text, and anything they `replace` takes precedence. An unterminated trailing token (`foo <!-- `, `foo <img src=x`) is dropped rather than passed through, since emitted verbatim it would keep parsing into whatever page the fragment is embedded in.
+
 ## Benchmarks
 
 When `bundle exec rake benchmark`, two different benchmarks are calculated. Here are those results on my machine.
