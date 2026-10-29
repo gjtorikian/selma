@@ -27,7 +27,7 @@ group :lint do
   gem "rubocop-standard"
 end
 
-group :benchmark do
+group :benchmark, optional: true do
   gem "benchmark-ips"
   gem "nokolexbor"
   gem "sanitize"
