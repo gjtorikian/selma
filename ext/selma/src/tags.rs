@@ -171,12 +171,23 @@ impl Tag {
     pub const TAG_COUNT: usize = 151;
 
     /// Identifies whether this is an HTML tag whose contents
-    /// are considered "text nodes", and thus, must be removed
+    /// are considered "text nodes", and thus, must be removed.
+    ///
+    /// Raw-text elements (`<noscript>`, `<xmp>`, ...) belong here: their content is
+    /// tokenized as text, so markup inside it never reaches the sanitizer. Keeping that
+    /// content after removing the wrapper would re-emit it verbatim into a context where
+    /// the browser parses it as live markup.
     pub fn has_text_content(tag: Tag) -> bool {
         tag.index == HTMLTag::SCRIPT as usize
             || tag.index == HTMLTag::STYLE as usize
             || tag.index == HTMLTag::MATH as usize
             || tag.index == HTMLTag::SVG as usize
+            || tag.index == HTMLTag::IFRAME as usize
+            || tag.index == HTMLTag::NOEMBED as usize
+            || tag.index == HTMLTag::NOFRAMES as usize
+            || tag.index == HTMLTag::NOSCRIPT as usize
+            || tag.index == HTMLTag::PLAINTEXT as usize
+            || tag.index == HTMLTag::XMP as usize
     }
 
     /// Is this tag an `<iframe>`?

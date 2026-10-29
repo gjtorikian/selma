@@ -259,6 +259,31 @@ module Selma
       )
     end
 
+    # https://github.com/gjtorikian/selma/security/advisories/GHSA-r7gx-g49v-32xf
+
+    def test_removing_a_raw_text_element_does_not_re_emit_its_content_as_markup
+      # `remove_contents` deliberately omits these, as html-pipeline's default config does
+      sanitizer = Selma::Sanitizer.new(
+        elements: ["p", "img"],
+        attributes: { "img" => ["src"] },
+        remove_contents: false,
+      )
+      rewriter = Selma::Rewriter.new(sanitizer: sanitizer)
+
+      ["iframe", "noembed", "noframes", "noscript", "plaintext", "xmp"].each do |tag_name|
+        output = rewriter.rewrite(%[<p><#{tag_name}><img src="x" onerror="alert(1)"></#{tag_name}></p>])
+
+        refute_includes(output, "onerror", "<#{tag_name}> produced #{output.inspect}")
+        refute_includes(output, "<img", "<#{tag_name}> produced #{output.inspect}")
+      end
+
+      # the original report: an unclosed `<noscript>` from markdown rendered with raw HTML enabled
+      output = rewriter.rewrite(%[<p><noscript><img src="x" onerror="alert('PB')"></p>\n])
+
+      refute_includes(output, "onerror")
+      refute_includes(output, "<img")
+    end
+
     def test_escapes_literal_lt_in_text_without_touching_entities_or_raw_text
       rewriter = Selma::Rewriter.new(sanitizer: @sanitizer)
 
