@@ -1,3 +1,16 @@
+## [0.5.4](https://github.com/gjtorikian/selma/compare/v0.5.3...v0.5.4) (2026-10-29)
+
+### Bug Fixes
+
+* drop the content of removed raw-text elements to prevent XSS ([#163](https://github.com/gjtorikian/selma/pull/163))
+* **deps:** bump magnus from 0.8.2 to 0.9.0 ([#161](https://github.com/gjtorikian/selma/pull/161))
+* **deps:** bump memchr from 2.8.0 to 2.8.3 ([#160](https://github.com/gjtorikian/selma/pull/160))
+
+### Miscellaneous Chores
+
+* make the benchmark gems an optional Bundler group ([#164](https://github.com/gjtorikian/selma/pull/164))
+
+
 ## [0.5.3](https://github.com/gjtorikian/selma/compare/v0.5.2...v0.5.3) (2026-09-16)
 
 ### ⚠️ Security Fixes
