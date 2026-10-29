@@ -207,7 +207,7 @@ Whenever a sanitizer is in use, a literal `<` in text is emitted as `&lt;`. That
 
 ## Benchmarks
 
-When `bundle exec rake benchmark`, two different benchmarks are calculated. Here are those results on my machine.
+The benchmark gems live in an optional Bundler group, so install them first with `bundle config set --local with benchmark && bundle install`. When `bundle exec rake benchmark`, two different benchmarks are calculated. Here are those results on my machine.
 
 ### Benchmarks for just the sanitization process
 
